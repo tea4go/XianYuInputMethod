@@ -45,6 +45,26 @@ export class KeyboardController {
     }
   }
 
+  /**
+   * 清除文本
+   */
+  public clearText(length:number){
+    if(this.textInputClient){
+      this.textInputClient.deleteForward(length)
+      this.setPreviewText('')
+    }
+  }
+
+  /**
+   * 设置预上屏文本
+   * @param str
+   */
+  setPreviewText(str:string){
+    if(this.textInputClient){
+      this.textInputClient.setPreviewText(str, {start: -1, end: -1})
+    }
+  }
+
   private initWindow(): void // 初始化窗口
   {
     if(this.mContext === undefined) {
