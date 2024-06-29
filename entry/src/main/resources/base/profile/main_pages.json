@@ -1,6 +1,7 @@
 {
   "src": [
     "pages/Index",
-    "InputMethodExtensionAbility/pages/InputIndex"
+    "InputMethodExtensionAbility/pages/InputIndex",
+    "InputMethodExtensionAbility/pages/EnglishInputIndex"
   ]
 }

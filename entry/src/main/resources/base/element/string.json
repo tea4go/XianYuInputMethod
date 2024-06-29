@@ -11,6 +11,14 @@
     {
       "name": "EntryAbility_label",
       "value": "label"
+    },
+    {
+      "name": "english",
+      "value": "英语"
+    },
+    {
+      "name": "chinese",
+      "value": "中文"
     }
   ]
 }

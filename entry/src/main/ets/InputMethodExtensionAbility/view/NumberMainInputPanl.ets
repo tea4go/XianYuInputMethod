@@ -1,10 +1,8 @@
-import { getBottomButtonGroupData, getLeftButtonGroupData,
-  getMainButtonGroupData,
+import {
   getNumberBottomButtonGroupData,
   getNumberLeftButtonGroupData,
   getNumberMainButtonGroupData,
   getNumberRightButtonGroupData,
-  getRightButtonGroupData,
   KeyButtonData } from '../data/KeyButtonDataManager';
 import keyboardController from '../model/KeyboardController';
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -16,11 +14,17 @@ import { switchChineseOrEnglish } from '../util/SwitchUtil';
  */
 @Component
 @Preview
-export struct MainInputPanel {
-  @State mainKeyData: Array<KeyButtonData> = getMainButtonGroupData();
-  @State leftKeyData: Array<KeyButtonData> = getLeftButtonGroupData();
-  @State rightKeyData: Array<KeyButtonData> = getRightButtonGroupData();
-  @State bottomKeyData: Array<KeyButtonData> = getBottomButtonGroupData();
+export struct NumberMainInputPanel {
+  @State mainKeyData: Array<KeyButtonData> = getNumberMainButtonGroupData();
+  @State leftKeyData: Array<KeyButtonData> = getNumberLeftButtonGroupData();
+  @State rightKeyData: Array<KeyButtonData> = getNumberRightButtonGroupData();
+  @State bottomKeyData: Array<KeyButtonData> = getNumberBottomButtonGroupData();
+
+  @State inputContent:Array<KeyButtonData> = []
+  @State numberMode:boolean = false;
+
+  /*@Consume inputContent:Array<KeyButtonData>
+  @Consume numberMode:boolean;*/
   @State layoutOptions: GridLayoutOptions = {
     regularSize: [1, 1],
     onGetRectByIndex: (index: number) => {
@@ -54,26 +58,6 @@ export struct MainInputPanel {
       // ...
       // 这里需要根据具体布局返回其他item的位置
     }
-  }
-
-  @State inputContent:Array<KeyButtonData>  = []
-  @State @Watch("onNumberModeUpdate") numberMode:boolean = false;
-  // @Consume inputContent:Array<KeyButtonData>
-  // @Consume @Watch("onNumberModeUpdate") numberMode:boolean;
-
-  onNumberModeUpdate(){
-    if(this.numberMode){
-       this.mainKeyData = getNumberMainButtonGroupData();
-       this.leftKeyData = getNumberLeftButtonGroupData();
-       this.rightKeyData = getNumberRightButtonGroupData();
-       this.bottomKeyData = getNumberBottomButtonGroupData();
-    }else{
-      this.mainKeyData = getMainButtonGroupData();
-      this.leftKeyData = getLeftButtonGroupData();
-      this.rightKeyData = getRightButtonGroupData();
-      this.bottomKeyData = getBottomButtonGroupData();
-    }
-    this.mainKeyData
   }
 
   build() {
@@ -175,7 +159,7 @@ export struct MainInputPanel {
               // 空格
               if(item.key == 'space'){
                 Button() {
-                  Image($r('app.media.space_2')).width(40).height(40)
+                  Image($r('app.media.space')).width(40).height(40)
                 }.backgroundColor(this.numberMode?'#dde1ec':Color.White)
                 .type(ButtonType.Normal)
                 .borderRadius(5)

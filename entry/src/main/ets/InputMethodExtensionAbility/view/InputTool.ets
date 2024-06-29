@@ -1,3 +1,6 @@
+/**
+ * 键盘上方的工具栏
+ */
 @Component
 @Preview
 export struct InputToolBar{

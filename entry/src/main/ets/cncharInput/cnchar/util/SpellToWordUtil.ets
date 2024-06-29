@@ -1,23 +1,32 @@
-export function spellToWord(str: string[]):  string[] {
+export function spellToWord(str: string[], englishMode:boolean):  string[] {
   let initialData = getDictInfo();
   let spellDictJian = getSpellDictJian()
   // 如果没有找到，则逐字处理
   let result: string[] = [];
-  //
-  let pinyinList:Array<string> = getPinyinList(str);
-  for (let pinyin of pinyinList) {
-    // 检查是否为声母
-    if (initialData.initial.includes(pinyin)) {
-      continue; // 声母单独存在可能没有对应汉字，跳过
-    }
-
-    // 在spellDictJian中查找拼音对应的汉字
-    const pinyinChars = spellDictJian[pinyin];
-    if (pinyinChars && pinyinChars.length > 0) {
-      let chineseCharacters = extractChineseCharacters(pinyinChars)
-      result = result.concat(chineseCharacters)
+  // 英文模式
+  if(englishMode){
+    let finalStr:string = ''
+    str.forEach((value, index)=>{
+      finalStr+=value
+    })
+    result.push(finalStr)
+    // 中文模式
+  }else{
+    let pinyinList:Array<string> = getPinyinList(str);
+    for (let pinyin of pinyinList) {
+      // 检查是否为声母
+      if (initialData.initial.includes(pinyin)) {
+        continue; // 声母单独存在可能没有对应汉字，跳过
+      }
+      // 在spellDictJian中查找拼音对应的汉字
+      const pinyinChars = spellDictJian[pinyin];
+      if (pinyinChars && pinyinChars.length > 0) {
+        let chineseCharacters = extractChineseCharacters(pinyinChars)
+        result = result.concat(chineseCharacters)
+      }
     }
   }
+
 
   return result;
 }
@@ -55,12 +64,6 @@ function getPinyinList(str:string[]){
   return productResults
 }
 
-function cartesianProduct(arrays: string[][]): string[][] {
-  // return arrays.reduce((acc, curr) =>
-  // acc.flatMap((c) => curr.map((n) => [].concat(c).concat(n))),
-  //   [[]]);
-  return  arrays
-}
 
 function cartesianProductTraditional<T>(arrays: T[][]): T[][] {
   let result: T[][] = [[]];

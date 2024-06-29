@@ -1,6 +1,6 @@
 import { common } from '@kit.AbilityKit';
 import { display } from '@kit.ArkUI';
-import { inputMethodEngine, InputMethodExtensionContext } from '@kit.IMEKit';
+import { inputMethodEngine, InputMethodExtensionContext, InputMethodSubtype } from '@kit.IMEKit';
 
 // 调用输入法框架的getInputMethodAbility方法获取实例，并由此实例调用输入法框架功能接口
 const inputMethodAbility: inputMethodEngine.InputMethodAbility = inputMethodEngine.getInputMethodAbility();
@@ -73,7 +73,7 @@ export class KeyboardController {
     let dis = display.getDefaultDisplaySync();
     let dWidth = dis.width;
     let dHeight = dis.height;
-    let keyHeightRate = 0.37;
+    let keyHeightRate = 0.50;
     let keyHeight = dHeight * keyHeightRate;
     let nonBarPosition = dHeight - keyHeight;
     let panelInfo: inputMethodEngine.PanelInfo = {
@@ -85,9 +85,27 @@ export class KeyboardController {
       if(this.panel) {
         await this.panel.resize(dWidth, keyHeight);
         await this.panel.moveTo(0, nonBarPosition);
-        await this.panel.setUiContent('InputMethodExtensionAbility/pages/InputIndex');
+        await this.panel.setUiContent('InputMethodExtensionAbility/pages/EnglishInputIndex');
       }
+
+      // 初始化输入法子类型
+      inputMethodAbility.on('setSubtype', async (inputMethodSubtype: InputMethodSubtype) => {
+        let subType = inputMethodSubtype; // 保存当前输入法子类型, 此处也可以改变状态变量的值，布局中判断状态变量，不同的子类型显示不同的布局控件
+        if (inputMethodSubtype.id == 'CnInputMethodExtAbility') { // 根据不同的子类型，可以加载不同的软键盘界面
+          await inputPanel.resize(dWidth, keyHeight);
+          await inputPanel.moveTo(0, nonBarPosition);
+          inputPanel.setUiContent('InputMethodExtensionAbility/pages/InputIndex');
+        }
+        if (inputMethodSubtype.id == 'UsInputMethodExtAbility') { // 根据不同的子类型，可以加载不同的软键盘界面
+          await inputPanel.resize(dWidth, keyHeight);
+          await inputPanel.moveTo(0, nonBarPosition);
+          inputPanel.setUiContent('InputMethodExtensionAbility/pages/EnglishInputIndex');
+        }
+      });
     });
+
+
+
   }
 
   private registerListener(): void

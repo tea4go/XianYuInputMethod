@@ -1,34 +1,9 @@
 import { spellToWord } from '../../cncharInput/cnchar/util/SpellToWordUtil';
+import { KeyButtonData } from '../data/KeyButtonDataManager';
 import keyboardController from '../model/KeyboardController';
 import { InputToolBar } from '../view/InputTool';
-import { InputButtonData, MainInputPanel } from '../view/MainInputPanl';
-import { numberSourceListData, sourceListType } from './keyboardKeyData';
-
-
-@Component
-export struct keyItem {
-  private keyValue: sourceListType = numberSourceListData[0];
-  @State keyBgc: string = "#fff"
-  @State keyFontColor: string = "#000"
-
-  build() {
-    Column() {
-      Flex({
-        direction: FlexDirection.Column,
-        alignItems: ItemAlign.Center, justifyContent: FlexAlign.Center
-      }) {
-        Text(this.keyValue.content).fontSize(20).fontColor(this.keyFontColor)
-      }
-    }
-    .backgroundColor(this.keyBgc)
-    .borderRadius(6)
-    .width("8%")
-    .height("65%")
-    .onClick(() => {
-      keyboardController.insertText(this.keyValue.content);
-    })
-  }
-}
+import {  MainInputPanel } from '../view/MainInputPanl';
+import { inputMethod } from '@kit.IMEKit';
 
 
 /**
@@ -36,7 +11,10 @@ export struct keyItem {
  * @returns
  */
 function getAssociationWord(keyWord:string[]):Array<string>{
-  let result:string|string[] = spellToWord(keyWord)
+  let subType = inputMethod.getCurrentInputMethodSubtype()
+  let englishMode = subType.id == 'UsInputMethodExtAbility'
+
+  let result:string|string[] = spellToWord(keyWord, englishMode)
   return result as string[]
   //return ["你好", "您好", "你还", "(*´▽｀)ノノ"]
 }
@@ -45,9 +23,11 @@ function getAssociationWord(keyWord:string[]):Array<string>{
 @Preview
 export struct InputTool {
 
-  @Consume @Watch("onInputUpdate")  inputContent:Array<InputButtonData>
+  @State @Watch("onInputUpdate")  inputContent:Array<KeyButtonData> = []
+  // @Consume @Watch("onInputUpdate")  inputContent:Array<KeyButtonData>
   // 是否展示联想词
   @State words:Array<string> = []
+
 
   build() {
     Row() {
@@ -124,9 +104,15 @@ export struct BottomTool {
   }
 }
 
+/**
+ * 最顶部的正在输入的消息框
+ */
 @Component
 export struct TopTextTip{
-  @Consume inputContent:Array<InputButtonData>
+  @State inputContent:Array<KeyButtonData> = []
+  // @Consume inputContent:Array<KeyButtonData>
+
+
   build() {
     Row(){
       Text(this.getShowInputContent()).fontSize(14).fontColor(Color.Black)
@@ -143,7 +129,7 @@ export struct TopTextTip{
     let showText:string = ""
     this.inputContent.forEach((value, index)=>{
       if(value.fillStr){
-        showText+=value.fillStr.charAt(0).toLowerCase()
+        showText+=value.fillStr.charAt(0)
       }
 
     })
@@ -156,7 +142,10 @@ export struct TopTextTip{
 @Entry
 struct InputIndex {
   // 记录输入的键值
-  @Provide inputContent:Array<InputButtonData> = []
+  @Provide inputContent:Array<KeyButtonData> = []
+  // 是否为数字键盘格式
+  @Provide numberMode:boolean = false;
+
   build() {
     Stack() {
 
