@@ -20,11 +20,12 @@ export struct NumberMainInputPanel {
   @State rightKeyData: Array<KeyButtonData> = getNumberRightButtonGroupData();
   @State bottomKeyData: Array<KeyButtonData> = getNumberBottomButtonGroupData();
 
-  @State inputContent:Array<KeyButtonData> = []
-  @State numberMode:boolean = false;
+  // @State inputContent:Array<KeyButtonData> = []
+  // @State numberMode:boolean = false;
 
-  /*@Consume inputContent:Array<KeyButtonData>
-  @Consume numberMode:boolean;*/
+  @Consume inputContent:Array<KeyButtonData>
+  @Consume numberMode:boolean;
+
   @State layoutOptions: GridLayoutOptions = {
     regularSize: [1, 1],
     onGetRectByIndex: (index: number) => {
@@ -72,7 +73,7 @@ export struct NumberMainInputPanel {
               .type(ButtonType.Normal)
               .width('100%').layoutWeight(1)
               .onClick(()=>{
-                this.fillText(item)
+                this.onButtonClick(item)
               })
 
             }, (item: KeyButtonData, index: number) => item.key)
@@ -94,7 +95,7 @@ export struct NumberMainInputPanel {
               .borderRadius(5)
               .type(ButtonType.Normal).height('100%').width('100%')
               .onClick(()=>{
-                this.pushToContent(item)
+                this.onButtonClick(item)
               })
             }.width('100%').height('100%').padding(3).backgroundColor('#eff0f4')
 
@@ -114,8 +115,7 @@ export struct NumberMainInputPanel {
                 .type(ButtonType.Normal)
                 .width('100%').layoutWeight(1)
                 .onClick(()=>{
-                  keyboardController.deleteForward(1);
-                  this.inputContent.pop()
+                  this.onButtonClick(item)
                 })
               }else if (item.key == 'zero'){
                 Button() {
@@ -138,10 +138,7 @@ export struct NumberMainInputPanel {
                 .type(ButtonType.Normal)
                 .width('100%').layoutWeight(1)
                 .onClick(()=>{
-                  if(item.key == 'reInput'){
-                    let length = this.getShowInputContent().length
-                    keyboardController.clearText(length)
-                  }
+                  this.onButtonClick(item)
                 })
               }
 
@@ -164,6 +161,9 @@ export struct NumberMainInputPanel {
                 .type(ButtonType.Normal)
                 .borderRadius(5)
                 .height('100%').layoutWeight(this.numberMode?1: 2.5)
+                .onClick(()=>{
+                  this.onButtonClick(item)
+                })
                 // 回车
               }else if(item.key == 'enter'){
                 Button() {
@@ -173,6 +173,9 @@ export struct NumberMainInputPanel {
                 .type(ButtonType.Normal)
                 .borderRadius(5)
                 .height('100%').layoutWeight(1)
+                .onClick(()=>{
+                  this.onButtonClick(item)
+                })
               }else{
                 Button() {
                   if(item.key == 'chineseOrEnglish'){
@@ -189,13 +192,7 @@ export struct NumberMainInputPanel {
                 .borderRadius(5)
                 .height('100%').layoutWeight(1)
                 .onClick(()=>{
-                  if(item.key == 'chineseOrEnglish'){
-                    switchChineseOrEnglish()
-                  }else if(item.key = 'number'){
-                    this.numberMode = !this.numberMode
-                  }else if(item.key == 'back'){
-                    this.numberMode = false;
-                  }
+                  this.onButtonClick(item)
                 })
               }
             }, (item: KeyButtonData, index: number) => item.key)
@@ -214,15 +211,51 @@ export struct NumberMainInputPanel {
   }
 
   /**
+   * 按钮点击事件
+   * @param item
+   */
+  onButtonClick(item:KeyButtonData) {
+    if (item.key == 'chineseOrEnglish') {
+      switchChineseOrEnglish()
+    } else if (item.key == 'number') {
+      this.numberMode = !this.numberMode
+    } else if (item.key == 'back') {
+      this.numberMode = false;
+    } else if (item.key == 'zero' || item.key == 'space' || item.key == 'enter') {
+      this.fillText(item)
+    } else if (item.key == 'reInput') {
+      let length = this.getShowInputContent().length
+      keyboardController.clearText(length)
+    } else if (item.key == 'del') {
+      keyboardController.deleteForward(1);
+      this.inputContent.pop()
+    }else{
+      let inputMethodSubType =  inputMethod.getCurrentInputMethodSubtype()
+      if(null == inputMethodSubType || inputMethodSubType.id == 'CnInputMethodExtAbility'){
+        this.pushToContent(item)
+      }else{
+        this.fillText(item)
+      }
+    }
+  }
+
+
+  /**
    * 点击按键之后的事件
    * @param inputData
    */
   pushToContent(inputData:KeyButtonData){
-    this.inputContent.push(inputData)
-    if(inputData.fillStr){
-      // 设置输入框里面的预上屏幕文本
-      let previewText = this.getShowInputContent()
-      // keyboardController.setPreviewText(previewText)
+    if(this.numberMode){
+      if(inputData.fillStr){
+        keyboardController.insertText(inputData.fillStr)
+      }
+    }else{
+      this.inputContent.push(inputData)
+      if(inputData.fillStr){
+        // 设置输入框里面的预上屏幕文本
+        let previewText = this.getShowInputContent()
+        // keyboardController.setPreviewText(previewText)
+      }
     }
   }
 

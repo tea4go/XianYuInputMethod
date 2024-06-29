@@ -1,13 +1,17 @@
 // Basic implementation of IDataSource to handle data listener
-class BasicDataSource implements IDataSource {
+import { SuggestionWord } from '../view/SmartSuggestionBar';
+import { util } from '@kit.ArkTS';
+import { PinyinSuggestGroup } from '../../cncharInput/cnchar/util/SpellToWordUtil';
+
+export class BasicDataSource<T> implements IDataSource {
   private listeners: DataChangeListener[] = [];
-  private originDataArray: string[] = [];
+  private originDataArray: T[] = [];
 
   public totalCount(): number {
     return 0;
   }
 
-  public getData(index: number): string {
+  public getData(index: number): T {
     return this.originDataArray[index];
   }
 
@@ -64,51 +68,41 @@ class BasicDataSource implements IDataSource {
   }
 }
 
-class MyDataSource extends BasicDataSource {
-  private dataArray: string[] = [];
+export class WordDataSource extends BasicDataSource<PinyinSuggestGroup> {
+
+  private dataArray: PinyinSuggestGroup[] = [];
 
   public totalCount(): number {
     return this.dataArray.length;
   }
 
-  public getData(index: number): string {
+  public getData(index: number): PinyinSuggestGroup {
     return this.dataArray[index];
   }
 
-  public addData(index: number, data: string): void {
+  public addData(index: number, data: PinyinSuggestGroup): void {
     this.dataArray.splice(index, 0, data);
     this.notifyDataAdd(index);
   }
 
-  public pushData(data: string): void {
+  public pushData(data: PinyinSuggestGroup): void {
     this.dataArray.push(data);
     this.notifyDataAdd(this.dataArray.length - 1);
   }
-}
 
-@Entry
-@Component
-struct MyComponent {
-  private data: MyDataSource = new MyDataSource();
-
-  aboutToAppear() {
-    for (let i = 0; i <= 20; i++) {
-      this.data.pushData(`Hello ${i}`)
-    }
+  public replaceAllData(datas:Array<PinyinSuggestGroup>):void{
+    this.updateId(datas)
+    this.dataArray = datas;
+    this.notifyDataReload()
   }
 
-  build() {
-    List({ space: 3 }) {
-      LazyForEach(this.data, (item: string) => {
-        ListItem() {
-          Row() {
-            Text(item).fontSize(50)
-              .onAppear(() => {
-                console.info("appear:" + item)
-              })
-          }.margin({ left: 10, right: 10 })
-        }
-      }, (item: string) => item)
-    }.cachedCount(5)
+  public updateId(datas:Array<PinyinSuggestGroup>):void{
+    if(datas){
+      datas.forEach((value)=>{
+        value.words.forEach((item)=>{
+          item.id = util.generateRandomUUID()
+        })
+      })
+    }
   }
 }

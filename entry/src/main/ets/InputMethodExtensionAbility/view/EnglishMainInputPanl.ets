@@ -28,16 +28,14 @@ export struct EnglishMainInputPanel {
   @State secondKeyData: Array<KeyButtonData> = [];
   @State thirdKeyData: Array<KeyButtonData> = [];
   @State bottomKeyData: Array<KeyButtonData> = [];
-  @State inputContent: Array<KeyButtonData> = []
-  @State numberMode: boolean = false;
-  //  @Consume inputContent:Array<KeyButtonData>
-  //  @Consume @Watch("onNumberModeUpdate") numberMode:boolean;
+
+  // @State inputContent: Array<KeyButtonData> = []
+  // @State numberMode: boolean = false;
+  @Consume inputContent:Array<KeyButtonData>
+  @Consume @Watch("onNumberModeUpdate") numberMode:boolean;
   keyWidth: number = 35;
   keyHeight: number = this.keyWidth * 1.5;
 
-
-  /*@Consume inputContent:Array<KeyButtonData>
-  @Consume numberMode:boolean;*/
   @State layoutOptions: GridLayoutOptions = {
     regularSize: [1, 1],
     onGetRectByIndex: (index: number) => {

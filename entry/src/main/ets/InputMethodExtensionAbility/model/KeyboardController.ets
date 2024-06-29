@@ -73,7 +73,8 @@ export class KeyboardController {
     let dis = display.getDefaultDisplaySync();
     let dWidth = dis.width;
     let dHeight = dis.height;
-    let keyHeightRate = 0.50;
+    // 0.37为现在主流输入法的高度，暂时没实现悬浮于输入法上方的输入提示
+    let keyHeightRate = 0.37 + 0.03;
     let keyHeight = dHeight * keyHeightRate;
     let nonBarPosition = dHeight - keyHeight;
     let panelInfo: inputMethodEngine.PanelInfo = {
@@ -85,7 +86,7 @@ export class KeyboardController {
       if(this.panel) {
         await this.panel.resize(dWidth, keyHeight);
         await this.panel.moveTo(0, nonBarPosition);
-        await this.panel.setUiContent('InputMethodExtensionAbility/pages/EnglishInputIndex');
+        await this.panel.setUiContent('InputMethodExtensionAbility/pages/InputIndex');
       }
 
       // 初始化输入法子类型

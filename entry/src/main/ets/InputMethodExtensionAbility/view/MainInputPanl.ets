@@ -10,6 +10,8 @@ import keyboardController from '../model/KeyboardController';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { inputMethod } from '@kit.IMEKit';
 import { switchChineseOrEnglish } from '../util/SwitchUtil';
+import { WordDataSource } from '../dao/DataSouce';
+import { PinyinSuggestGroup } from '../../cncharInput/cnchar/util/SpellToWordUtil';
 
 /**
  * 键盘
@@ -56,10 +58,12 @@ export struct MainInputPanel {
     }
   }
 
-  @State inputContent:Array<KeyButtonData>  = []
-  @State @Watch("onNumberModeUpdate") numberMode:boolean = false;
-  // @Consume inputContent:Array<KeyButtonData>
-  // @Consume @Watch("onNumberModeUpdate") numberMode:boolean;
+  // @State inputContent:Array<KeyButtonData>  = []
+  // @State @Watch("onNumberModeUpdate") numberMode:boolean = false;
+
+   @Consume inputContent:Array<KeyButtonData>
+   @Consume @Watch("onNumberModeUpdate") numberMode:boolean;
+   @Consume words: WordDataSource;
 
   onNumberModeUpdate(){
     if(this.numberMode){
@@ -81,17 +85,34 @@ export struct MainInputPanel {
       Grid(undefined, this.layoutOptions) {
         GridItem() {
           Column({ space: 3 }) {
-            ForEach(this.leftKeyData, (item: KeyButtonData, index: number) => {
-              Button() {
-                Text(item.name).fontSize(16).textAlign(TextAlign.Center)
-              }.backgroundColor(Color.Transparent)
-              .type(ButtonType.Normal)
-              .width('100%').layoutWeight(1)
-              .onClick(()=>{
-                this.fillText(item)
-              })
+            if(this.words.totalCount() > 0){
+              LazyForEach(this.words, (item: PinyinSuggestGroup, index: number) => {
+                Button() {
+                  Text(item.pinyin).fontSize(16).textAlign(TextAlign.Center)
+                }.backgroundColor(Color.Transparent)
+                .type(ButtonType.Normal)
+                .width('100%').layoutWeight(1)
+                .onClick(()=>{
+                  // 切换拼音详情界面
+                  
+                })
 
-            }, (item: KeyButtonData, index: number) => item.key)
+              }, (item: KeyButtonData, index: number) => item.key)
+            }else{
+              ForEach(this.leftKeyData, (item: KeyButtonData, index: number) => {
+                Button() {
+                  Text(item.name).fontSize(16).textAlign(TextAlign.Center)
+                }.backgroundColor(Color.Transparent)
+                .type(ButtonType.Normal)
+                .width('100%').layoutWeight(1)
+                .onClick(()=>{
+                  this.onButtonClick(item)
+                })
+
+              }, (item: KeyButtonData, index: number) => item.key)
+            }
+
+
           }.width('100%').height('100%').backgroundColor('#dde1ec')
           .borderRadius(5)
           .justifyContent(FlexAlign.SpaceAround)
@@ -110,7 +131,7 @@ export struct MainInputPanel {
               .borderRadius(5)
               .type(ButtonType.Normal).height('100%').width('100%')
               .onClick(()=>{
-                this.pushToContent(item)
+                this.onButtonClick(item)
               })
             }.width('100%').height('100%').padding(3).backgroundColor('#eff0f4')
 
@@ -130,8 +151,7 @@ export struct MainInputPanel {
                 .type(ButtonType.Normal)
                 .width('100%').layoutWeight(1)
                 .onClick(()=>{
-                  keyboardController.deleteForward(1);
-                  this.inputContent.pop()
+                  this.onButtonClick(item)
                 })
               }else if (item.key == 'zero'){
                 Button() {
@@ -143,7 +163,7 @@ export struct MainInputPanel {
                 .borderRadius(5)
                 .width('100%').layoutWeight(1)
                 .onClick(()=>{
-                  this.fillText(item)
+                  this.onButtonClick(item)
                 })
               }else{
                 Button() {
@@ -154,10 +174,7 @@ export struct MainInputPanel {
                 .type(ButtonType.Normal)
                 .width('100%').layoutWeight(1)
                 .onClick(()=>{
-                  if(item.key == 'reInput'){
-                    let length = this.getShowInputContent().length
-                    keyboardController.clearText(length)
-                  }
+                  this.onButtonClick(item)
                 })
               }
 
@@ -180,6 +197,9 @@ export struct MainInputPanel {
                 .type(ButtonType.Normal)
                 .borderRadius(5)
                 .height('100%').layoutWeight(this.numberMode?1: 2.5)
+                .onClick(()=>{
+                  this.onButtonClick(item)
+                })
                 // 回车
               }else if(item.key == 'enter'){
                 Button() {
@@ -189,6 +209,9 @@ export struct MainInputPanel {
                 .type(ButtonType.Normal)
                 .borderRadius(5)
                 .height('100%').layoutWeight(1)
+                .onClick(()=>{
+                  this.onButtonClick(item)
+                })
               }else{
                 Button() {
                   if(item.key == 'chineseOrEnglish'){
@@ -205,13 +228,7 @@ export struct MainInputPanel {
                 .borderRadius(5)
                 .height('100%').layoutWeight(1)
                 .onClick(()=>{
-                  if(item.key == 'chineseOrEnglish'){
-                    switchChineseOrEnglish()
-                  }else if(item.key = 'number'){
-                    this.numberMode = !this.numberMode
-                  }else if(item.key == 'back'){
-                    this.numberMode = false;
-                  }
+                  this.onButtonClick(item)
                 })
               }
             }, (item: KeyButtonData, index: number) => item.key)
@@ -229,17 +246,55 @@ export struct MainInputPanel {
     .padding({left: 16, right: 16, top: 2, bottom: 4})
   }
 
+
+  /**
+   * 按钮点击事件
+   * @param item
+   */
+  onButtonClick(item:KeyButtonData){
+    if(item.key == 'chineseOrEnglish'){
+      switchChineseOrEnglish()
+    }else if(item.key == 'number'){
+      this.numberMode = !this.numberMode
+    }else if(item.key == 'back'){
+      this.numberMode = false;
+    }else if(item.key == 'zero' || item.key == 'space' || item.key == 'enter'){
+      this.fillText(item)
+    }else if(item.key == 'reInput'){
+      let length = this.getShowInputContent().length
+      keyboardController.clearText(length)
+    }else if(item.key == 'del'){
+      keyboardController.deleteForward(1);
+      this.inputContent.pop()
+    }else{
+      let inputMethodSubType =  inputMethod.getCurrentInputMethodSubtype()
+      if(null == inputMethodSubType || inputMethodSubType.id == 'CnInputMethodExtAbility'){
+        this.pushToContent(item)
+      }else{
+        this.fillText(item)
+      }
+    }
+  }
+
   /**
    * 点击按键之后的事件
    * @param inputData
    */
   pushToContent(inputData:KeyButtonData){
-    this.inputContent.push(inputData)
-    if(inputData.fillStr){
-      // 设置输入框里面的预上屏幕文本
-      let previewText = this.getShowInputContent()
-      // keyboardController.setPreviewText(previewText)
+    // 若为数字模式，直接输入，不需要查找词语
+    if(this.numberMode){
+      if(inputData.fillStr){
+        keyboardController.insertText(inputData.fillStr)
+      }
+    }else{
+      this.inputContent.push(inputData)
+      if(inputData.fillStr){
+        // 设置输入框里面的预上屏幕文本
+        let previewText = this.getShowInputContent()
+        // keyboardController.setPreviewText(previewText)
+      }
     }
+
   }
 
   /**

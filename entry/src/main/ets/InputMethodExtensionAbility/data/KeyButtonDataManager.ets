@@ -7,6 +7,8 @@ export class KeyButtonData {
   key: string = ''
   // 输入的字符
   fillStr:string|null = null
+  // 是否已被选中生成联想词
+  createWord:boolean = false
 
   constructor(upName: string, name: string, key: string, fillStr?:string) {
     this.upName = upName;
@@ -16,6 +18,7 @@ export class KeyButtonData {
       this.fillStr = fillStr
     }
   }
+
 }
 
 /**
@@ -120,7 +123,7 @@ export function getNumberBottomButtonGroupData(): Array<KeyButtonData> {
   let array = new Array<KeyButtonData>();
   array.push(new KeyButtonData('', '符', 'symbol'))
   array.push(new KeyButtonData('', '返回', 'back'))
-  array.push(new KeyButtonData('', '0', 'zero'))
+  array.push(new KeyButtonData('', '0', 'zero', '0'))
   array.push(new KeyButtonData('', '___', 'space', ' '))
   array.push(new KeyButtonData('', '_|', 'enter', '\n'))
   return array
@@ -208,5 +211,19 @@ export function getEnglishBottomButtonGroupData():Array<KeyButtonData>{
   array.push(new KeyButtonData('', '.', 'point', '.'))
   array.push(new KeyButtonData('', '中/英', 'chineseOrEnglish'))
   array.push(new KeyButtonData('', '_|', 'enter', '\n'))
+  return array
+}
+
+/**
+ * 获取拼音详情界面右侧的按钮组
+ * @returns
+ */
+export function getPinyinDetailRightButtonGroupData(): Array<KeyButtonData> {
+  let array = new Array<KeyButtonData>();
+  array.push(new KeyButtonData('', '返回', 'back'))
+  array.push(new KeyButtonData('', '删除', 'del'))
+  array.push(new KeyButtonData('', '重输', 'reInput'))
+  array.push(new KeyButtonData('', '拼/笔', 'pinyinOrWuBi'))
+  array.push(new KeyButtonData('', '全/字', 'allOrWord'))
   return array
 }

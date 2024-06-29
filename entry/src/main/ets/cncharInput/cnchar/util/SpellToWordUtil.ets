@@ -1,47 +1,81 @@
-export function spellToWord(str: string[], englishMode:boolean):  string[] {
+import { KeyButtonData } from '../../../InputMethodExtensionAbility/data/KeyButtonDataManager';
+import { SuggestionWord } from '../../../InputMethodExtensionAbility/view/SmartSuggestionBar';
+
+
+export interface PinyinSuggestGroup{
+  pinyin:string;
+  words:SuggestionWord[]
+}
+
+export function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean):  PinyinSuggestGroup[] {
+  // 未创建词语的按键
+  let notUseKeyButtonData = keys.filter((value)=> !value.createWord)
+
   let initialData = getDictInfo();
   let spellDictJian = getSpellDictJian()
+  let pinyinGroup:Array<PinyinSuggestGroup> = []
   // 如果没有找到，则逐字处理
-  let result: string[] = [];
+  let result: SuggestionWord[] = [];
   // 英文模式
   if(englishMode){
+    let str = getInputStrArray(notUseKeyButtonData)
     let finalStr:string = ''
     str.forEach((value, index)=>{
       finalStr+=value
     })
-    result.push(finalStr)
+    let suggestionWord = new SuggestionWord(finalStr, finalStr, notUseKeyButtonData)
+    result.push(suggestionWord)
     // 中文模式
   }else{
-    let pinyinList:Array<string> = getPinyinList(str);
+    // 生成输入按键可能生成的拼音列表
+    let pinyinList:Array<SuggestionWord> = getPinyinList(notUseKeyButtonData);
     for (let pinyin of pinyinList) {
+      let pinyinText = pinyin.previewText
       // 检查是否为声母
-      if (initialData.initial.includes(pinyin)) {
+      if (initialData.initial.includes(pinyinText)) {
         continue; // 声母单独存在可能没有对应汉字，跳过
       }
+
       // 在spellDictJian中查找拼音对应的汉字
-      const pinyinChars = spellDictJian[pinyin];
-      if (pinyinChars && pinyinChars.length > 0) {
-        let chineseCharacters = extractChineseCharacters(pinyinChars)
-        result = result.concat(chineseCharacters)
+      const hanzhiList = spellDictJian[pinyin.previewText];
+      if (hanzhiList && hanzhiList.length > 0) {
+        let chineseCharacters:Array<SuggestionWord> = extractChineseCharacters(pinyinText, hanzhiList, pinyin.keys)
+        let group:PinyinSuggestGroup = {pinyin: pinyinText, words: chineseCharacters}
+        pinyinGroup.push(group)
       }
     }
   }
 
+  return pinyinGroup;
+}
 
-  return result;
+function getInputStrArray(inputContent:KeyButtonData[]):string[]{
+  let result:Array<string> = []
+  if(inputContent){
+    inputContent.forEach((value, index)=>{
+      let fillStr = value.fillStr
+      if(fillStr){
+        result.push(fillStr)
+      }
+    })
+  }
+
+  return result
 }
 
 /**
  * 提取中文字符
- * @param input
+ * @param pinyin 拼音
+ * @param input 拼音对应的汉字列表
  * @returns
  */
-function extractChineseCharacters(input: string): string[] {
-  const chineseCharacters: string[] = [];
+export function extractChineseCharacters(pinyin:string, input: string, keys:Array<KeyButtonData>): SuggestionWord[] {
+  const chineseCharacters: SuggestionWord[] = [];
   for (const char of input) {
     // 判断字符是否属于中文字符的Unicode范围
     if (char >= '\u4e00' && char <= '\u9fff') {
-      chineseCharacters.push(char);
+      let suggestonWord = new SuggestionWord(char, pinyin, keys)
+      chineseCharacters.push(suggestonWord);
     }
   }
   return chineseCharacters;
@@ -52,16 +86,29 @@ export interface DictInfo{
   polyWord: string
 }
 
-function getPinyinList(str:string[]){
+/**
+ * 获取拼音列表
+ * @param keys
+ * @returns
+ */
+function getPinyinList(keys:KeyButtonData[]):Array<SuggestionWord>{
+  let str:string[] = getInputStrArray(keys)
   let arrayList = new Array<Array<string>>()
   str.forEach((value, index)=>{
+    // 例如: [a, b, c]
     const charArray = Array.from(value);
     arrayList.push(charArray)
   })
 
-  // 使用cartesianProduct函数并转换为字符串组合
+  // 使用cartesianProduct函数并转换为字符串组合 生成所有可能的拼音组合，待优化过滤不可能为拼音的字符串
   const productResults = cartesianProductTraditional(arrayList).map(combination => combination.join(''));
-  return productResults
+  // 生成
+  let returnList:Array<SuggestionWord> = []
+  productResults.forEach((value, index)=>{
+    let suggestWord = new SuggestionWord('', value, keys)
+    returnList.push(suggestWord)
+  })
+  return returnList
 }
 
 
@@ -85,7 +132,7 @@ function cartesianProductTraditional<T>(arrays: T[][]): T[][] {
 
 
 
-function getDictInfo():DictInfo{
+export function getDictInfo():DictInfo{
   return {
     "initial": ["b", "p", "m", "f", "d", "t", "n", "l", "g", "k", "h", "j", "q", "x", "zh", "ch", "sh", "r", "z", "c", "s", "y", "w"],
     "polyWord": "唉挨嗳义艾依椅嗌噫钉酊丁正争怔诤挣政症铮妻乜了钌撩燎瞭佴铒任蕃朴繁泊柏啵膊魄薄簸叭伯把杷耙靶鲅扒吧罢栖蹊娭几纪齐系亟其奇济给荠缉稽看倒丽哩蠡泡炮跑刨剥趵参甚葚什食莳桄广张涨厂长场倡叉杈衩差碴刺伺似俟有柚万没抹磨散糁上裳个仡各革格胳鬲搁葛饹压哑雅呀佗说耶掖相处与予吁雨禺语菀尢王亡兀乌无於恶捎稍欠茜为尾委尉隗遗蔚吐菟打答瘩大待逮子仔兹茈訾节价结偈接解藉倔肖蛸共供仅尽禁干杆赣疟要铫繇采偲发菲蜚吗蚂麻摩孖堡卜芥盖帱传转中种风葑缝石担疸惮瘅儋单苫钐扇掸掺氏只吱识织峙殖荼数员芸晕熨合吓纥何和荷喝戏芴虎核唬鹄糊劲径经仆埔铺暴瀑曝仇湫蝤艿论抡媛缘溜遛馏镏六陆碌蓼那哪内扛岗杠钢分切砌慊卷圈般勾枸化划华哗吡纰芘陂铍埤睥裨辟劈沤区曲撒片便扁缏褊吖阿呵啊胺蛾町梃铤爽台呔苔骀夫父孚芾怫服脯跗夭拗熬嚣空圻饮尺匙屯咳害还圜捻楷芯莘熟扎轧咋咤查栅炸喳猹楂槎汶闷斗坊乐约栎钥莫模茆冒旄猫豁伙仿彷膀伴扳拌胖袢番瓦袜哇奸间浅监渐溅犍锏槛见纤洗铣鲜孛背被臂车且句苣沮桔据蛆趄锔冯并屏甾载沓遢拓嗒踏同侗垌峒恫通令呤侧厕写叶邪契鲑夹伽茄家贾假葭脉炜哕虺咔咯卡估汩谷骨蛄雇毂嘏鹘叨陶焘角侥觉校教矫脚徼嚼可坷折蜇褚褶螫舍拾蛇歙畬号好貉弹澹歪崴炀烊鞅奔贲头宁拧主术助柱庶属归龟柜炅桧鳜呷咖嘎尼伲泥嶷作笮壳峤悄雀翘劁谯蕉鞘红哄蕻氐坻的嘀镝地底得撇佣喁汗犴含感县券眩旋呱佃点钿呗陌削噱嚷穰郇荨熏窨潭鸟溺弄泷笼乘秤称盛裎澄蹬艮孱禅占粘辗颤仰会浍伧嗔冲虫重涌观串纶冠矜莞兴省夯行炕肮巷浚隽菌筠当挡铛咧裂创厌芫阽咽研剡殷铅阏腌燕圩浒砉畜嘘侯率绿囝南难胗振椹僮幢戆臭宿择责祭翟尿隋遂睢祝轴调舳粥倩綮鲭栝扫燥拉剌喇腊蜡啦莩票嘌漂缥杉沙刹奢厦嗄煞噎镩汤倘惝铴樘趟镗拚娉牟泌咪秘眯谜糜靡否姥唠涝落潦獠肋勒累雷嘞漯擂儡思塞色酾芍炔阙肚读都渎驮垛度堕桁珩横呐呢忪过娜旁榜磅凉量靓踉体荑绨提裼醍俶佛免渑棱楞别瘪临啉淋亲覃溱廑囤沌敦镦蹲吭吵剿爪啁着朝嘲皋膏镐呛抢戗跄强镪降将椎缪噌苦应荥忒褪挝涡娆荛更绠杓骠苕挑来徕癞焯琢缴躅枞晃慌苴这丧柴刷卒趣蹴哈虾蛤呶咀觜氓黾蒙帖莎挲缩拆嚓迫派排浑荤珲混络捋烙硌跞啰玢槟育哟喏若拽喋揲昳莨偻喽搂露奘脏臧藏俩拶攒哏蚌绷喷掊瘥撮叟擞哦埋谩蔓嫚啐粹棍谁麇钻赚揣嘬啜绰嘚综曾缯嗨嘿嗯囊馕遏"
@@ -237,7 +284,7 @@ function getSpellDefault():Record<string, string>{
  * key: 完整拼音, value: 中文
  * @returns
  */
-function  getSpellDictJian():Record<string, string>{
+export function  getSpellDictJian():Record<string, string>{
   return {
     "ai": "0:艾9哎1哀1诶1唉9唉6埃1挨7挨6爱4砹4捱2皑2隘4嗌9嗳9嗳8嗳6嫒4矮3碍4暧4瑷4蔼3锿1噫9癌2霭3娭6",
     "yi": "1:一1乙3义7义9亿4已3弋4刈4忆4艺4仡9以3仪2艾9议4亦4伊1圯2夷2屹4异4衣1钇3佚4医1呓4尾8役4抑4沂2矣3苡3译4诒2邑4佾4依8依6宜2峄4怡2怿4易4绎4诣4迤2饴2驿4咦2咿1奕4姨2弈4疫4羿4舣3荑7蚁3贻2轶4食9倚3悒4挹4益4眙2胰2谊4酏3埸4猗1痍2移2翊4翌4蛇7逸4铱1壹1揖1椅8椅6遗7嗌9意4溢4缢4肄4蛾8裔4颐2旖3漪1疑2瘗4蜴4毅4熠4镒4劓4噫9噫6殪4薏4嶷7翳4翼4臆4彝2癔4镱4黟1懿4祎1燚4昳9乂4",
