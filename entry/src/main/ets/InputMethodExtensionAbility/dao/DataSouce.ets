@@ -1,7 +1,7 @@
 // Basic implementation of IDataSource to handle data listener
 import { SuggestionWord } from '../view/SmartSuggestionBar';
 import { util } from '@kit.ArkTS';
-import { PinyinSuggestGroup } from '../../cncharInput/cnchar/util/SpellToWordUtil';
+import { KeyButtonData } from '../data/KeyButtonDataManager';
 
 export class BasicDataSource<T> implements IDataSource {
   private listeners: DataChangeListener[] = [];
@@ -68,44 +68,56 @@ export class BasicDataSource<T> implements IDataSource {
   }
 }
 
-export class WordDataSource extends BasicDataSource<PinyinSuggestGroup> {
+/**
+ * 左侧拼音列表实体
+ */
+export class PinyinGroup{
+  name:string = '';
+  id:string = ''
+  keys:Array<KeyButtonData> = []
 
-  private dataArray: PinyinSuggestGroup[] = [];
+  constructor(name: string, id: string, keys:Array<KeyButtonData>) {
+    this.name = name;
+    this.id = id;
+    this.keys = keys;
+  }
+
+
+}
+
+export class PinyinDataSource extends BasicDataSource<PinyinGroup> {
+
+  private dataArray: PinyinGroup[] = [];
 
   public totalCount(): number {
     return this.dataArray.length;
   }
 
-  public getData(index: number): PinyinSuggestGroup {
+  public getData(index: number): PinyinGroup {
     return this.dataArray[index];
   }
 
-  public getSuggestionList(index:number):Array<SuggestionWord>{
-    return this.dataArray[index].words
-  }
 
-  public addData(index: number, data: PinyinSuggestGroup): void {
+  public addData(index: number, data: PinyinGroup): void {
     this.dataArray.splice(index, 0, data);
     this.notifyDataAdd(index);
   }
 
-  public pushData(data: PinyinSuggestGroup): void {
+  public pushData(data: PinyinGroup): void {
     this.dataArray.push(data);
     this.notifyDataAdd(this.dataArray.length - 1);
   }
 
-  public replaceAllData(datas:Array<PinyinSuggestGroup>):void{
+  public replaceAllData(datas:Array<PinyinGroup>):void{
     this.updateId(datas)
     this.dataArray = datas;
     this.notifyDataReload()
   }
 
-  public updateId(datas:Array<PinyinSuggestGroup>):void{
+  public updateId(datas:Array<PinyinGroup>):void{
     if(datas){
       datas.forEach((value)=>{
-        value.words.forEach((item)=>{
-          item.id = util.generateRandomUUID()
-        })
+        value.id = util.generateRandomUUID()
       })
     }
   }

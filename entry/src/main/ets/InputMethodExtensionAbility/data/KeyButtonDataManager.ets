@@ -5,8 +5,10 @@ export class KeyButtonData {
   name: string = ''
   // 按钮主键
   key: string = ''
-  // 输入的字符
+  // 可输入的字符
   fillStr:string|null = null
+  // 正在预输入对话框上展示的字符
+  selectStr:string|null = null
   // 是否已被选中生成联想词
   createWord:boolean = false
 
@@ -35,7 +37,7 @@ export function getLeftButtonGroupData(): Array<KeyButtonData> {
 }
 
 /**
- * 获取中间的按钮组
+ * 获取拼音键盘中间的按钮组
  * @returns
  */
 export function getMainButtonGroupData(): Array<KeyButtonData> {
@@ -44,9 +46,9 @@ export function getMainButtonGroupData(): Array<KeyButtonData> {
   array.push(new KeyButtonData('2', 'ABC', 'abc', 'abc'))
   array.push(new KeyButtonData('3', 'DEF', 'def', 'def'))
   array.push(new KeyButtonData('4', 'GHI', 'ghi', 'ghi'))
-  array.push(new KeyButtonData('5', 'JKL', 'jkl', 'jkl'))
-  array.push(new KeyButtonData('6', 'MNO', 'mno', 'mno'))
-  array.push(new KeyButtonData('7', 'PQRS', 'pqrs', 'pqrs'))
+  array.push(new KeyButtonData('5', 'JKL', 'jkl', 'ljk'))
+  array.push(new KeyButtonData('6', 'MNO', 'mno', 'omn'))
+  array.push(new KeyButtonData('7', 'PQRS', 'pqrs', 'spqr'))
   array.push(new KeyButtonData('8', 'TUV', 'tuv', 'tuv'))
   array.push(new KeyButtonData('9', 'WXYZ', 'wxyz', 'wxyz'))
   return array

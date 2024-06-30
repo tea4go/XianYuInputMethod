@@ -1,21 +1,25 @@
-import { WordDataSource } from '../dao/DataSouce';
+import { PinyinDataSource, PinyinGroup } from '../dao/DataSouce';
 import { SuggestionWord } from './SmartSuggestionBar';
 import { util } from '@kit.ArkTS';
 import {
+  convert2SuggestWord,
   extractChineseCharacters,
-  getDictInfo, getSpellDictJian, PinyinSuggestGroup } from '../../cncharInput/cnchar/util/SpellToWordUtil';
+  getDictInfo, getSpellDictJian,
+  isFullPinyin } from '../util/SpellToWordUtil';
 import { getPinyinDetailRightButtonGroupData, KeyButtonData } from '../data/KeyButtonDataManager';
 import { switchChineseOrEnglish } from '../util/SwitchUtil';
 import { inputMethod } from '@kit.IMEKit';
 import keyboardController from '../model/KeyboardController';
 import { MockSetup } from '@ohos/hamock';
+import WordService from '../dao/WordsService';
 
 @Component
 @Preview
 // @Entry
 export struct  PinyinDetailView{
 
-  @Consume words: WordDataSource;
+  //
+  @Consume @Watch("onPinyinListUpdate") pinyinList: PinyinDataSource;
   // @State wordsDataSource: Array<PinyinSuggestGroup> = [];
   // @State wordsDataSource: WordDataSource = this.getTestData();
 
@@ -32,6 +36,9 @@ export struct  PinyinDetailView{
   // 已使用的按键
   @Consume useWords:Array<SuggestionWord>
 
+  // 当前界面展示的拼音对应的联想词
+  @State pageWords:Array<SuggestionWord> = []
+
 
   @MockSetup
   mock(){
@@ -39,9 +46,16 @@ export struct  PinyinDetailView{
     // this.currentWords = this.wordsDataSource[0].words
   }
 
+  onPinyinListUpdate(){
+    if(this.pinyinList.totalCount() > 0){
+      let suggestWords = WordService.queryByKeyword(this.pinyinList.getData(0).name)
+      this.pageWords =  convert2SuggestWord(suggestWords);
+    }
+  }
 
-  getTestData():Array<PinyinSuggestGroup>{
-    let pinyinGroup:Array<PinyinSuggestGroup> = []
+
+  getTestData():Array<PinyinGroup>{
+    let pinyinGroup:Array<PinyinGroup> = []
     let pinyinList = ['ai', 'bi', 'ci', 'ch']
     let spellDictJian = getSpellDictJian()
     let initialData = getDictInfo();
@@ -58,7 +72,7 @@ export struct  PinyinDetailView{
             index+= 1
           })
 
-          let group:PinyinSuggestGroup = {pinyin: value, words: chineseCharacters}
+          let group:PinyinGroup = new PinyinGroup(value, util.generateRandomUUID(), [])
           pinyinGroup.push(group)
         }
       }
@@ -72,10 +86,10 @@ export struct  PinyinDetailView{
       // 左侧菜单栏
       Row(){
         List({space: 1}){
-          LazyForEach(this.words, (item:PinyinSuggestGroup, index:number)=>{
+          LazyForEach(this.pinyinList, (item:PinyinGroup, index:number)=>{
             ListItem(){
               Button(){
-                Text(item.pinyin)
+                Text(item.name)
                   .textAlign(TextAlign.Center)
                   .height(40)
                   .width('100%')
@@ -85,9 +99,17 @@ export struct  PinyinDetailView{
               .width('100%')
               .onClick(()=>{
                 this.currentWordsIndex = index
+                // 判断当前是不是完整拼音
+                if(isFullPinyin(item.name)){
+                  let words = WordService.queryByKeyword(item.name)
+                  this.pageWords = convert2SuggestWord(words)
+                }else{
+                  let words = WordService.queryAllByKeywordForLike(item.name, item.name.length)
+                  this.pageWords = convert2SuggestWord(words)
+                }
               })
             }
-          }, (item:string)=> item)
+          }, (item:PinyinGroup)=> item.id)
         }.width('100%').height('100%').alignListItem(ListItemAlign.Center)
       }.width('13%').height('100%').backgroundColor(Color.White)
       Row()
@@ -98,7 +120,7 @@ export struct  PinyinDetailView{
       // 右侧具体拼音栏
       Row(){
         Grid(){
-          ForEach(this.words.getSuggestionList(this.currentWordsIndex), (item:SuggestionWord)=>{
+          ForEach(this.pageWords, (item:SuggestionWord)=>{
             GridItem(){
               Button(){
                 Text(item.showName)

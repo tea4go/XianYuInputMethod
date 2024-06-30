@@ -3,12 +3,13 @@
  */
 import { KeyButtonData } from '../data/KeyButtonDataManager'
 import { inputMethod } from '@kit.IMEKit'
-import { PinyinSuggestGroup, spellToWord } from '../../cncharInput/cnchar/util/SpellToWordUtil'
+import { PinyinSuggestResult, spellToWord } from '../util/SpellToWordUtil'
 import keyboardController from '../model/KeyboardController'
-import {WordDataSource, WordSuggestDataSource} from "../dao/DataSouce"
+import {PinyinDataSource, WordSuggestDataSource} from "../dao/DataSouce"
 import { util } from '@kit.ArkTS'
 import { FaultLogger } from '@kit.PerformanceAnalysisKit'
 import Logger from '../util/Logger'
+import { US_SUB_TYPE_ID } from '../constant/InputMethConstant'
 
 /**
  * 智能联想栏
@@ -25,12 +26,11 @@ export struct SmartSuggestionBar {
   @Consume @Watch("onPreviewTextUpdate") useWords:Array<SuggestionWord>
   // 联想词资源
   // @State words:Array<SuggestionWord> = []
-  @Consume words: WordDataSource;
+  @Consume pinyinList: PinyinDataSource;
+
   suggestWords: WordSuggestDataSource = new WordSuggestDataSource()
   // 是否正在展示拼音列表界面
   @Consume showPinYinListPage:boolean;
-  // // 预览的正在输入的文字
-  // @State previewText:string = ''
 
   build() {
     Row(){
@@ -57,12 +57,15 @@ export struct SmartSuggestionBar {
   smartSuggestionText() {
     // 顶部的正在输入内容
     Row() {
-      Text(this.getShowInputContent()).fontSize(14).fontColor(Color.Black)
-        .margin({ left: 16 })
+      Text(){
+        ForEach(this.getShowInputContent(), (item:PreviewText, index)=>{
+          Span(item.str).decoration({type: item.lock?TextDecorationType.Underline:TextDecorationType.None})
+        }, (item:PreviewText, index)=> item.str + index)
+      }.margin({ left: 16 }).fontSize(14).fontColor(Color.Black)
+
     }.height(30).width('100%')
     .backgroundColor(Color.Transparent).justifyContent(FlexAlign.Start)
   }
-
 
 
   /**
@@ -127,54 +130,69 @@ export struct SmartSuggestionBar {
    * 获取展示在输入顶上的正在输入的字符
    * @returns
    */
-  getShowInputContent(): string {
-    let showText: string = ""
+  getShowInputContent(): Array<PreviewText> {
+    let showText: Array<PreviewText> = []
 
     // 已使用的联想词列表
     let useIndex = this.useWords.length
     this.useWords.forEach((value, index)=>{
-      showText+= value.showName + ""
+      showText.push(new PreviewText(value.showName, true))
     })
 
     this.inputContent.forEach((value, index) =>
     {
       if(0 == index){
         // 判断第一个联想词
-        let firstSuggestWordGroup = this.words.getData(0)
-        if(firstSuggestWordGroup){
-          let firstWord = firstSuggestWordGroup.pinyin
-            showText+= firstWord + "'"
+        let firstSuggestWordGroup = this.suggestWords
+        if(firstSuggestWordGroup && firstSuggestWordGroup.totalCount() > 0){
+          let firstWord = firstSuggestWordGroup.getData(0).previewText
+          showText.push(new PreviewText(firstWord.charAt(0)+"'", false))
         }else{
           if (value.fillStr) {
-            showText += value.fillStr.charAt(0)
+            showText.push(new PreviewText(value.fillStr.charAt(0), false))
           }
         }
 
       }else if( useIndex != 0 && index > useIndex){
         if (value.fillStr) {
-          showText += value.fillStr.charAt(0)
+          showText.push(new PreviewText(value.fillStr.charAt(0), false))
         }
       }
     })
     return showText
   }
 
+  /**
+   * 输入内容更新时调用事件
+   */
   onInputUpdate(){
     let suggestWords = getAssociationWord(this.inputContent)
-    Logger.info(`共查询到${suggestWords.length}个联想词`)
-    this.words.replaceAllData(suggestWords)
-    this.suggestMode = this.words.totalCount() > 0
-    //
-    let totalCount = this.words.totalCount()
-    let suggestList = new Array<SuggestionWord>()
-    for (let i = totalCount - 1; i >= 0; i--) {
-      suggestList = suggestList.concat(this.words.getData(i).words)
+    Logger.info(`共查询到${suggestWords.words.length}个联想词`)
+    this.pinyinList.replaceAllData(suggestWords.pinyin)
+    if(this.pinyinList.totalCount() == 0){
+      this.showPinYinListPage = false
     }
-    this.suggestWords.replaceAllData(suggestList)
+    this.suggestMode = suggestWords.words.length > 0
+    this.suggestWords.replaceAllData(suggestWords.words)
   }
 
 }
 
+/**
+ * 预览文本
+ */
+export class PreviewText{
+  // 显示内容
+  str:string = ''
+  // 是否已锁定
+  lock:boolean = false;
+
+  constructor(str: string, lock: boolean) {
+    this.str = str
+    this.lock = lock
+  }
+
+}
 
 
 /**
@@ -229,16 +247,18 @@ export class SuggestionWord{
 
 }
 
+
 /**
  * 获取联想词
  * @returns
  */
-function getAssociationWord(keyWord:KeyButtonData[]):Array<PinyinSuggestGroup>{
+function getAssociationWord(keyWord:KeyButtonData[]):PinyinSuggestResult{
+  if(keyWord.length == 0){
+    return {pinyin: [], words: []}
+  }
   let subType = inputMethod.getCurrentInputMethodSubtype()
-  let englishMode = subType.id == 'UsInputMethodExtAbility'
-
-  let result:PinyinSuggestGroup[] = spellToWord(keyWord, englishMode)
+  let englishMode = subType.id == US_SUB_TYPE_ID
+  let result = spellToWord(keyWord, englishMode)
   return result
-  //return ["你好", "您好", "你还", "(*´▽｀)ノノ"]
 }
 

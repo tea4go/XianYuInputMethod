@@ -1,22 +1,26 @@
-import WordService from '../../../InputMethodExtensionAbility/dao/WordsService';
-import { KeyButtonData } from '../../../InputMethodExtensionAbility/data/KeyButtonDataManager';
-import { SuggestionWord } from '../../../InputMethodExtensionAbility/view/SmartSuggestionBar';
-import { ArrayList } from '@kit.ArkTS';
-import { Words } from '../../../InputMethodExtensionAbility/data/Words';
+import WordService from '../dao/WordsService';
+import { KeyButtonData } from '../data/KeyButtonDataManager';
+import { SuggestionWord } from '../view/SmartSuggestionBar';
+import { ArrayList, JSON, util } from '@kit.ArkTS';
+import { Words } from '../data/Words';
+import Logger  from './Logger';
+import { PinyinGroup } from '../dao/DataSouce';
 
-
-export interface PinyinSuggestGroup{
-  pinyin:string;
+/**
+ * 拼音搜索结果
+ */
+export interface PinyinSuggestResult{
+  pinyin:PinyinGroup[];
   words:SuggestionWord[]
 }
 
-export function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean):  PinyinSuggestGroup[] {
+export function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean):  PinyinSuggestResult {
   // 未创建词语的按键
   let notUseKeyButtonData = keys.filter((value)=> !value.createWord)
 
   let initialData = getDictInfo();
   let spellDictJian = getSpellDictJian()
-  let pinyinGroup:Array<PinyinSuggestGroup> = []
+
   // 如果没有找到，则逐字处理
   let result: SuggestionWord[] = [];
   // 英文模式
@@ -32,34 +36,68 @@ export function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean):  P
   }else{
     // 生成输入按键可能生成的拼音列表
     let pinyinList:Array<SuggestionWord> = getPinyinList(notUseKeyButtonData);
+    // 第一个词可能的所有拼音
+    let firstWordAllPossiblePinyin:Array<string> = []
+    let pinyinGroup:Array<PinyinGroup> = []
     for (let pinyin of pinyinList) {
       let pinyinText = pinyin.previewText
-      // 检查是否为声母
-      if (initialData.initial.includes(pinyinText)) {
-        continue; // 声母单独存在可能没有对应汉字，跳过
-      }
-      // 查找第一页数据
-      let words = WordService.queryByKeywordPage(pinyin.previewText, 1, 10)
-      // 在spellDictJian中查找拼音对应的汉字
-      const hanzhiList = spellDictJian[pinyin.previewText];
+      // 声母单独存在可能没有对应汉字，跳过
+      firstWordAllPossiblePinyin.push(pinyinText)
+      pinyinGroup.push(new PinyinGroup(pinyinText, util.generateRandomUUID(), pinyin.keys))
 
+      // 获取所有可能的拼音列表
+      // 在spellDictJian中查找拼音对应的汉字
+      const hanzhiList = spellDictJian[pinyinText];
       if (hanzhiList && hanzhiList.length > 0) {
-        let chineseCharacters:Array<SuggestionWord> = extractChineseCharacters(pinyinText, hanzhiList, pinyin.keys)
-        let group:PinyinSuggestGroup = {pinyin: pinyinText, words: chineseCharacters}
-        pinyinGroup.push(group)
+        firstWordAllPossiblePinyin.push(pinyinText)
+        pinyinGroup.push(new PinyinGroup(pinyinText, util.generateRandomUUID(), pinyin.keys))
       }
     }
+    showWords(pinyinList)
+    Logger.info('所有可能的拼音为:' + JSON.stringify(firstWordAllPossiblePinyin))
+    let suggestWords:Array<SuggestionWord> = []
+
+    for (let pinyinText of firstWordAllPossiblePinyin) {
+      // 查找第一页数据
+      let words = WordService.queryByKeywordPage(pinyinText, 1, 10)
+      suggestWords = suggestWords.concat(convert2SuggestWord(words)) ;
+    }
+    return {pinyin: pinyinGroup, words: suggestWords};
   }
 
-  return pinyinGroup;
+  return {pinyin: [], words: []};
 }
 
-function convert2SuggestWord(words:ArrayList<Words>, keys:Array<KeyButtonData>): SuggestionWord[]{
+/**
+ * 判断是不是完整拼音
+ * @param pinyin
+ * @returns
+ */
+export function isFullPinyin(pinyin:string):boolean{
+  let initialData = getDictInfo();
+  if(initialData.initial.includes(pinyin)){
+    return false
+  }else{
+    return true
+  }
+}
+
+function showWords(words:Array<SuggestionWord>):void{
+  let str = '['
+  words.forEach((value)=>{
+    str+=value.previewText +','
+  })
+  str+=']'
+  Logger.info('生成的所有拼音列表为:' + str)
+}
+
+export  function convert2SuggestWord(words:ArrayList<Words>): SuggestionWord[]{
     if(words){
       let list:Array<SuggestionWord> = []
       words.forEach((value)=>{
         let word = value.word
         let pinyin = value.pinyin
+        let keys:Array<KeyButtonData> = value.btn
         let suggestionWord = new SuggestionWord(word, pinyin, keys)
         list.push(suggestionWord)
       })

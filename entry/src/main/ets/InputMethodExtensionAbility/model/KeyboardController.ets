@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { display } from '@kit.ArkUI';
 import { inputMethodEngine, InputMethodExtensionContext, InputMethodSubtype } from '@kit.IMEKit';
+import { CN_SUB_TYPE_ID, US_SUB_TYPE_ID } from '../constant/InputMethConstant';
 
 // 调用输入法框架的getInputMethodAbility方法获取实例，并由此实例调用输入法框架功能接口
 const inputMethodAbility: inputMethodEngine.InputMethodAbility = inputMethodEngine.getInputMethodAbility();
@@ -100,12 +101,12 @@ export class KeyboardController {
       // 初始化输入法子类型
       inputMethodAbility.on('setSubtype', async (inputMethodSubtype: InputMethodSubtype) => {
         let subType = inputMethodSubtype; // 保存当前输入法子类型, 此处也可以改变状态变量的值，布局中判断状态变量，不同的子类型显示不同的布局控件
-        if (inputMethodSubtype.id == 'CnInputMethodExtAbility') { // 根据不同的子类型，可以加载不同的软键盘界面
+        if (inputMethodSubtype.id == CN_SUB_TYPE_ID) { // 根据不同的子类型，可以加载不同的软键盘界面
           await inputPanel.resize(dWidth, keyHeight);
           await inputPanel.moveTo(0, nonBarPosition);
           inputPanel.setUiContent('InputMethodExtensionAbility/pages/InputIndex');
         }
-        if (inputMethodSubtype.id == 'UsInputMethodExtAbility') { // 根据不同的子类型，可以加载不同的软键盘界面
+        if (inputMethodSubtype.id == US_SUB_TYPE_ID) { // 根据不同的子类型，可以加载不同的软键盘界面
           await inputPanel.resize(dWidth, keyHeight);
           await inputPanel.moveTo(0, nonBarPosition);
           inputPanel.setUiContent('InputMethodExtensionAbility/pages/EnglishInputIndex');

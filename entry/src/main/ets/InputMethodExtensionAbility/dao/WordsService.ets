@@ -3,6 +3,7 @@ import { Words } from '../data/Words'
 import { ArrayList } from '@kit.ArkTS';
 import { relationalStore } from '@kit.ArkData';
 import { BusinessError } from '@kit.BasicServicesKit';
+import Logger from '../util/Logger';
 
 namespace WordService{
 
@@ -14,6 +15,10 @@ namespace WordService{
    */
   export function queryByKeywordPage(keyword:string, pageIndex:number, pageSize:number):ArrayList<Words>{
     let store = GlobalContext.getContext().getWordDb()
+    if(!store){
+      Logger.error('store err , store is ' + store)
+      return new ArrayList()
+    }
     let offset = (pageIndex - 1) * pageSize;
     let likeCondition = "" + keyword + "%"
     let querySql = 'select * from words where pinyin like ? order by pinyin, frequency desc limit ? offset ?'
@@ -22,6 +27,8 @@ namespace WordService{
     return list
   }
 
+
+
   /**
    * 根据拼音查询
    * @param keyword
@@ -29,11 +36,36 @@ namespace WordService{
    */
   export function queryByKeyword(keyword:string):ArrayList<Words>{
     let store = GlobalContext.getContext().getWordDb()
+    if(!store){
+      Logger.error('store err , store is ' + store)
+      return new ArrayList()
+    }
     let querySql = 'select * from words where pinyin = ? order by pinyin, frequency'
     let resultSet = store.querySqlSync(querySql, [keyword])
     let list = Words.resultSetToList(resultSet)
     return list
   }
+
+/**
+ * 查询所有关键字开头，长度为x的数据
+ * @param keyword
+ * @param length
+ * @returns
+ */
+  export function queryAllByKeywordForLike(keyword:string, length:number):ArrayList<Words>{
+    let store = GlobalContext.getContext().getWordDb()
+    if(!store){
+      Logger.error('store err , store is ' + store)
+      return new ArrayList()
+    }
+    let likeCondition = "" + keyword + "%"
+    let querySql = 'select * from words where pinyin like ? AND LENGTH(word) = ? order by pinyin, frequency'
+    let resultSet = store.querySqlSync(querySql, [likeCondition, length])
+    let list = Words.resultSetToList(resultSet)
+    return list
+  }
+
+
 
   /**
    * 更新使用频率，提升下一个词语出现的排序

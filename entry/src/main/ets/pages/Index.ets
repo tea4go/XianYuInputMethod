@@ -3,8 +3,9 @@ import { BottomTool } from '../InputMethodExtensionAbility/pages/InputIndex';
 import { MainInputPanel } from '../InputMethodExtensionAbility/view/MainInputPanl';
 import { EnglishMainInputPanel } from '../InputMethodExtensionAbility/view/EnglishMainInputPanl';
 import { SmartSuggestionBar, SuggestionWord } from '../InputMethodExtensionAbility/view/SmartSuggestionBar';
-import { WordDataSource } from '../InputMethodExtensionAbility/dao/DataSouce';
+import { PinyinDataSource } from '../InputMethodExtensionAbility/dao/DataSouce';
 import WordRepImport from '../InputMethodExtensionAbility/dao/WordRepImport';
+import { PinyinDetailView } from '../InputMethodExtensionAbility/view/PinyinDetailView';
 
 @Entry
 @Component
@@ -15,11 +16,12 @@ struct Index {
   @Provide numberMode: boolean = false;
   // 英文输入法模式
   @State englishMode: boolean = false
-  //
-  @Provide words: WordDataSource = new WordDataSource();
+
   @Provide showPinYinListPage: boolean = false;
   // 已使用的
   @Provide useWords: Array<SuggestionWord> = []
+
+  @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
 
   build() {
     Column() {
@@ -51,7 +53,11 @@ struct Index {
           } else {
             Column({ space: 5 }) {
               SmartSuggestionBar()
-              MainInputPanel()
+              if(this.showPinYinListPage){
+                PinyinDetailView()
+              }else{
+                MainInputPanel()
+              }
               BottomTool()
             }.width('100%').height('100%')
           }
@@ -65,7 +71,7 @@ struct Index {
   }
 
   aboutToAppear(): void {
-    WordRepImport.copySqlFileToStorage()
+
   }
 
 }

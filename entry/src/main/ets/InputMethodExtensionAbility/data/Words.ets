@@ -3,6 +3,7 @@ import relationalStore from '@ohos.data.relationalStore';
 import { ValuesBucket } from '@kit.ArkData';
 import { ColumnInfo } from '../entity/ColumnInfo';
 import { objToNumber, objToString, toEntityList } from '../util/EntityUtil';
+import { KeyButtonData } from './KeyButtonDataManager';
 
 /**
  *
@@ -41,6 +42,11 @@ export class Words {
    * 词组完整拼音
    */
   groupPin: string = '';
+
+  /**
+   * 未在数据库的字段，关联的输入按钮
+   */
+  btn:Array<KeyButtonData> = []
 
   static getTableName(): string {
     return "WORDS";

@@ -14,6 +14,77 @@ import { taskpool } from '@kit.ArkTS';
 
 namespace WordRepImport{
 
+  /**
+   * 词库还原
+   */
+  export async function copyDbFileToStorage()  {
+    let wordDb = GlobalContext.getContext().getWordDb()
+    if(wordDb.version > 0){
+      Logger.info('词库无需初始化...')
+      return
+    }
+
+    // 应用沙箱路径
+    let mContext:common.UIAbilityContext = GlobalContext.getContext().getObject('mContext') as common.UIAbilityContext
+    let resourceManager = mContext.resourceManager
+    let databaseDir = mContext.databaseDir
+    let filePath =  'lexicon.db'
+    // 词库路径
+    let repDir = databaseDir + '/rdb'
+    let targetPath =  repDir + "/lexicon.db"
+    resourceManager.getRawFd(filePath, (err, rawfd)=>{
+      if(rawfd){
+        if(!fs.accessSync(repDir)){
+          fs.mkdirSync(repDir)
+        }
+        if(!fs.accessSync(targetPath)){
+          Logger.error(targetPath + '文件不存在')
+        }else{
+          // fs.unlinkSync(targetPath)
+          // 词库存在不再进行初始化操作
+          return
+        }
+        // 自Unix纪元以来经过的时间。默认为毫秒数
+        let startTime = systemDateTime.getTime()
+
+        let destFile = fs.openSync(targetPath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE)
+
+        let buffSize: number = 4096;
+        let buffer: ArrayBuffer = new ArrayBuffer(buffSize);
+        let off: number = 0; // 记录读取位置的偏移（相较于文件起始偏移）
+        let len: number = 0; // 本次读取内容的实际长度
+        let readedLen: number = 0; // 记录已读文件长度
+        while (len = fs.readSync(rawfd.fd, buffer, { offset: rawfd.offset + off, length: buffSize })) {
+          readedLen += len;
+          fs.writeSync(destFile.fd, buffer, { offset: off, length: len });
+          off = off + len;
+          if ((rawfd.length - readedLen) < buffSize) {
+            buffSize = rawfd.length - readedLen;
+          }
+        }
+
+        //fs.copyFileSync(rawfd.fd, file.fd, 0);
+        fs.closeSync(destFile.fd)
+
+          wordDb.restore('lexicon.db', (err) => {
+            if (err) {
+              console.error(`Restore failed, code is ${err.code},message is ${err.message}`);
+              return;
+            }
+            //
+            Logger.info('导入词库成功');
+            let endTime = systemDateTime.getTime()
+            let betweenMs = (endTime - startTime)
+            let betweenStr = convertMsToHMS(betweenMs)
+            Logger.info('导入词库耗时:' + betweenStr + " ," + betweenMs + "ms")
+          })
+
+
+      }
+    })
+
+  }
+
   export async function copySqlFileToStorage()  {
     // 应用沙箱路径
     let mContext:common.UIAbilityContext = GlobalContext.getContext().getObject('mContext') as common.UIAbilityContext

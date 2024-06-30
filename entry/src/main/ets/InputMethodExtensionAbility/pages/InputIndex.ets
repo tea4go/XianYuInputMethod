@@ -1,8 +1,5 @@
-import { spellToWord } from '../../cncharInput/cnchar/util/SpellToWordUtil';
-import { WordDataSource } from '../dao/DataSouce';
-import WordRepImport from '../dao/WordRepImport';
+import { PinyinDataSource } from '../dao/DataSouce';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
-import keyboardController from '../model/KeyboardController';
 import {  MainInputPanel } from '../view/MainInputPanl';
 import { PinyinDetailView } from '../view/PinyinDetailView';
 import { SmartSuggestionBar, SuggestionWord } from '../view/SmartSuggestionBar';
@@ -40,10 +37,11 @@ struct InputIndex {
   @Provide inputContent:Array<KeyButtonData> = []
   // 是否为数字键盘格式
   @Provide numberMode:boolean = false;
-  @Provide words: WordDataSource = new WordDataSource();
+
   @Provide showPinYinListPage:boolean = false;
   // 已使用的
   @Provide useWords:Array<SuggestionWord> = []
+  @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
 
   build() {
     Stack() {

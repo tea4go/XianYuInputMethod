@@ -8,6 +8,7 @@ import keyboardController from '../model/KeyboardController';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { inputMethod } from '@kit.IMEKit';
 import { switchChineseOrEnglish } from '../util/SwitchUtil';
+import { CN_SUB_TYPE_ID } from '../constant/InputMethConstant';
 
 /**
  * 键盘
@@ -231,7 +232,7 @@ export struct NumberMainInputPanel {
       this.inputContent.pop()
     }else{
       let inputMethodSubType =  inputMethod.getCurrentInputMethodSubtype()
-      if(null == inputMethodSubType || inputMethodSubType.id == 'CnInputMethodExtAbility'){
+      if(null == inputMethodSubType || inputMethodSubType.id == CN_SUB_TYPE_ID){
         this.pushToContent(item)
       }else{
         this.fillText(item)

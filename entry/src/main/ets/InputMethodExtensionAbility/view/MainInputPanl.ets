@@ -10,8 +10,9 @@ import keyboardController from '../model/KeyboardController';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { inputMethod } from '@kit.IMEKit';
 import { switchChineseOrEnglish } from '../util/SwitchUtil';
-import { WordDataSource } from '../dao/DataSouce';
-import { PinyinSuggestGroup } from '../../cncharInput/cnchar/util/SpellToWordUtil';
+import { PinyinDataSource, PinyinGroup } from '../dao/DataSouce';
+import { CN_SUB_TYPE_ID } from '../constant/InputMethConstant';
+
 
 /**
  * 键盘
@@ -61,9 +62,12 @@ export struct MainInputPanel {
   // @State inputContent:Array<KeyButtonData>  = []
   // @State @Watch("onNumberModeUpdate") numberMode:boolean = false;
 
+
    @Consume inputContent:Array<KeyButtonData>
    @Consume @Watch("onNumberModeUpdate") numberMode:boolean;
-   @Consume words: WordDataSource;
+   @Consume pinyinList: PinyinDataSource;
+  // 是否正在展示拼音列表界面
+  @Consume showPinYinListPage:boolean;
 
   onNumberModeUpdate(){
     if(this.numberMode){
@@ -85,19 +89,23 @@ export struct MainInputPanel {
       Grid(undefined, this.layoutOptions) {
         GridItem() {
           Column({ space: 3 }) {
-            if(this.words.totalCount() > 0){
-              LazyForEach(this.words, (item: PinyinSuggestGroup, index: number) => {
-                Button() {
-                  Text(item.pinyin).fontSize(16).textAlign(TextAlign.Center)
-                }.backgroundColor(Color.Transparent)
-                .type(ButtonType.Normal)
-                .width('100%').layoutWeight(1)
-                .onClick(()=>{
-                  // 切换拼音详情界面
-                  
-                })
+            if(this.pinyinList.totalCount() > 0){
+              List({space: 8}){
+                LazyForEach(this.pinyinList, (item: PinyinGroup, index: number) => {
+                  ListItem(){
+                    Button() {
+                      Text(item.name).fontSize(16).textAlign(TextAlign.Center)
+                    }.backgroundColor(Color.Transparent)
+                    .type(ButtonType.Normal)
+                    .width('100%').height(40)
+                    .onClick(()=>{
+                      // 锁定正在查询的拼音为当前选择的字符
+                      this.lockKeyButton(item)
+                    })
+                  }
+                }, (item: PinyinGroup, index: number) => item.id)
+              }.listDirection(Axis.Vertical).height('100%').layoutWeight(1)
 
-              }, (item: KeyButtonData, index: number) => item.key)
             }else{
               ForEach(this.leftKeyData, (item: KeyButtonData, index: number) => {
                 Button() {
@@ -246,6 +254,18 @@ export struct MainInputPanel {
     .padding({left: 16, right: 16, top: 2, bottom: 4})
   }
 
+  /**
+   * 锁定正在输入的字符
+   */
+  lockKeyButton(pinyin:PinyinGroup){
+    if(pinyin){
+      let keys = pinyin.keys
+      for (let key of keys) {
+        key.selectStr = pinyin.name
+      }
+    }
+  }
+
 
   /**
    * 按钮点击事件
@@ -268,7 +288,7 @@ export struct MainInputPanel {
       this.inputContent.pop()
     }else{
       let inputMethodSubType =  inputMethod.getCurrentInputMethodSubtype()
-      if(null == inputMethodSubType || inputMethodSubType.id == 'CnInputMethodExtAbility'){
+      if(null == inputMethodSubType || inputMethodSubType.id == CN_SUB_TYPE_ID){
         this.pushToContent(item)
       }else{
         this.fillText(item)
