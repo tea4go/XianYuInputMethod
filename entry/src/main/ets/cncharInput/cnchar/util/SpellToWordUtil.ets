@@ -1,5 +1,8 @@
+import WordService from '../../../InputMethodExtensionAbility/dao/WordsService';
 import { KeyButtonData } from '../../../InputMethodExtensionAbility/data/KeyButtonDataManager';
 import { SuggestionWord } from '../../../InputMethodExtensionAbility/view/SmartSuggestionBar';
+import { ArrayList } from '@kit.ArkTS';
+import { Words } from '../../../InputMethodExtensionAbility/data/Words';
 
 
 export interface PinyinSuggestGroup{
@@ -35,9 +38,11 @@ export function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean):  P
       if (initialData.initial.includes(pinyinText)) {
         continue; // 声母单独存在可能没有对应汉字，跳过
       }
-
+      // 查找第一页数据
+      let words = WordService.queryByKeywordPage(pinyin.previewText, 1, 10)
       // 在spellDictJian中查找拼音对应的汉字
       const hanzhiList = spellDictJian[pinyin.previewText];
+
       if (hanzhiList && hanzhiList.length > 0) {
         let chineseCharacters:Array<SuggestionWord> = extractChineseCharacters(pinyinText, hanzhiList, pinyin.keys)
         let group:PinyinSuggestGroup = {pinyin: pinyinText, words: chineseCharacters}
@@ -47,6 +52,22 @@ export function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean):  P
   }
 
   return pinyinGroup;
+}
+
+function convert2SuggestWord(words:ArrayList<Words>, keys:Array<KeyButtonData>): SuggestionWord[]{
+    if(words){
+      let list:Array<SuggestionWord> = []
+      words.forEach((value)=>{
+        let word = value.word
+        let pinyin = value.pinyin
+        let suggestionWord = new SuggestionWord(word, pinyin, keys)
+        list.push(suggestionWord)
+      })
+
+      return list;
+    }else{
+      return []
+    }
 }
 
 function getInputStrArray(inputContent:KeyButtonData[]):string[]{

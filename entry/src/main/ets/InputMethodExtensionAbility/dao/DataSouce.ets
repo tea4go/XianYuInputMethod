@@ -80,6 +80,10 @@ export class WordDataSource extends BasicDataSource<PinyinSuggestGroup> {
     return this.dataArray[index];
   }
 
+  public getSuggestionList(index:number):Array<SuggestionWord>{
+    return this.dataArray[index].words
+  }
+
   public addData(index: number, data: PinyinSuggestGroup): void {
     this.dataArray.splice(index, 0, data);
     this.notifyDataAdd(index);
@@ -102,6 +106,45 @@ export class WordDataSource extends BasicDataSource<PinyinSuggestGroup> {
         value.words.forEach((item)=>{
           item.id = util.generateRandomUUID()
         })
+      })
+    }
+  }
+}
+
+
+export class WordSuggestDataSource extends BasicDataSource<SuggestionWord> {
+
+  private dataArray: SuggestionWord[] = [];
+
+  public totalCount(): number {
+    return this.dataArray.length;
+  }
+
+  public getData(index: number): SuggestionWord {
+    return this.dataArray[index];
+  }
+
+
+  public addData(index: number, data: SuggestionWord): void {
+    this.dataArray.splice(index, 0, data);
+    this.notifyDataAdd(index);
+  }
+
+  public pushData(data: SuggestionWord): void {
+    this.dataArray.push(data);
+    this.notifyDataAdd(this.dataArray.length - 1);
+  }
+
+  public replaceAllData(datas:Array<SuggestionWord>):void{
+    this.updateId(datas)
+    this.dataArray = datas;
+    this.notifyDataReload()
+  }
+
+  public updateId(datas:Array<SuggestionWord>):void{
+    if(datas){
+      datas.forEach((value)=>{
+        value.id = util.generateRandomUUID()
       })
     }
   }

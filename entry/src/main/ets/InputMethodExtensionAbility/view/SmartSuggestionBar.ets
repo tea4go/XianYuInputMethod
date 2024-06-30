@@ -5,7 +5,7 @@ import { KeyButtonData } from '../data/KeyButtonDataManager'
 import { inputMethod } from '@kit.IMEKit'
 import { PinyinSuggestGroup, spellToWord } from '../../cncharInput/cnchar/util/SpellToWordUtil'
 import keyboardController from '../model/KeyboardController'
-import {WordDataSource} from "../dao/DataSouce"
+import {WordDataSource, WordSuggestDataSource} from "../dao/DataSouce"
 import { util } from '@kit.ArkTS'
 import { FaultLogger } from '@kit.PerformanceAnalysisKit'
 import Logger from '../util/Logger'
@@ -22,10 +22,15 @@ export struct SmartSuggestionBar {
   // 是否展示联想词
   @State suggestMode:boolean = false;
   // 已选中的联想词
-  @State useWords:Array<SuggestionWord> = []
+  @Consume @Watch("onPreviewTextUpdate") useWords:Array<SuggestionWord>
   // 联想词资源
   // @State words:Array<SuggestionWord> = []
   @Consume words: WordDataSource;
+  suggestWords: WordSuggestDataSource = new WordSuggestDataSource()
+  // 是否正在展示拼音列表界面
+  @Consume showPinYinListPage:boolean;
+  // // 预览的正在输入的文字
+  // @State previewText:string = ''
 
   build() {
     Row(){
@@ -36,6 +41,13 @@ export struct SmartSuggestionBar {
         this.suggestionList()
       }.width('100%')
     }.width('100%')
+  }
+
+  /**
+   * 已使用的按键更新（新增或删除）
+   */
+  onPreviewTextUpdate(){
+    this.getShowInputContent()
   }
 
   /**
@@ -60,7 +72,7 @@ export struct SmartSuggestionBar {
     Row() {
       if(this.suggestMode){
         List(){
-          LazyForEach(this.words, (item:SuggestionWord, index)=>{
+          LazyForEach(this.suggestWords, (item:SuggestionWord, index)=>{
             ListItem(){
               Button(item.showName).type(ButtonType.Normal).backgroundColor(Color.Transparent)
                 .fontColor(Color.Black)
@@ -79,7 +91,7 @@ export struct SmartSuggestionBar {
           Image($r('app.media.to_right'))
         }.width(40).height(40).backgroundColor(Color.Transparent)
         .onClick(()=>{
-          // TODO 切换具体读音界面
+          this.showPinYinListPage = true;
         })
       }else{
         InputToolBar()
@@ -118,7 +130,6 @@ export struct SmartSuggestionBar {
   getShowInputContent(): string {
     let showText: string = ""
 
-
     // 已使用的联想词列表
     let useIndex = this.useWords.length
     this.useWords.forEach((value, index)=>{
@@ -139,7 +150,7 @@ export struct SmartSuggestionBar {
           }
         }
 
-      }else if(index > useIndex){
+      }else if( useIndex != 0 && index > useIndex){
         if (value.fillStr) {
           showText += value.fillStr.charAt(0)
         }
@@ -153,6 +164,13 @@ export struct SmartSuggestionBar {
     Logger.info(`共查询到${suggestWords.length}个联想词`)
     this.words.replaceAllData(suggestWords)
     this.suggestMode = this.words.totalCount() > 0
+    //
+    let totalCount = this.words.totalCount()
+    let suggestList = new Array<SuggestionWord>()
+    for (let i = totalCount - 1; i >= 0; i--) {
+      suggestList = suggestList.concat(this.words.getData(i).words)
+    }
+    this.suggestWords.replaceAllData(suggestList)
   }
 
 }

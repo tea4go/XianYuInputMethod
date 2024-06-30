@@ -15,20 +15,28 @@ import { MockSetup } from '@ohos/hamock';
 // @Entry
 export struct  PinyinDetailView{
 
-  // @Consume words: WordDataSource;
-  @State wordsDataSource: Array<PinyinSuggestGroup> = [];
+  @Consume words: WordDataSource;
+  // @State wordsDataSource: Array<PinyinSuggestGroup> = [];
   // @State wordsDataSource: WordDataSource = this.getTestData();
 
-  // 当前的拼音
-  @State currentWords:SuggestionWord[] = []
+  // 当前的拼音index
+  @State currentWordsIndex:number = 0
   @State rightKeyData:KeyButtonData[] = getPinyinDetailRightButtonGroupData()
 
-  @State pinyinList:Array<string> = ['ai', 'bi', 'ci', 'ch', "ci", 'a', 'b', 'c']
+  // @State pinyinList:Array<string> = ['ai', 'bi', 'ci', 'ch', "ci", 'a', 'b', 'c']
+
+  // 是否正在展示拼音列表界面
+  @Consume showPinYinListPage:boolean;
+  //
+  @Consume inputContent:Array<KeyButtonData>
+  // 已使用的按键
+  @Consume useWords:Array<SuggestionWord>
+
 
   @MockSetup
   mock(){
-    this.wordsDataSource = this.getTestData();
-    this.currentWords = this.wordsDataSource[0].words
+    // this.wordsDataSource = this.getTestData();
+    // this.currentWords = this.wordsDataSource[0].words
   }
 
 
@@ -64,10 +72,10 @@ export struct  PinyinDetailView{
       // 左侧菜单栏
       Row(){
         List({space: 1}){
-          ForEach(this.pinyinList, (item:string)=>{
+          LazyForEach(this.words, (item:PinyinSuggestGroup, index:number)=>{
             ListItem(){
               Button(){
-                Text(item)
+                Text(item.pinyin)
                   .textAlign(TextAlign.Center)
                   .height(40)
                   .width('100%')
@@ -76,12 +84,12 @@ export struct  PinyinDetailView{
               .backgroundColor(Color.White)
               .width('100%')
               .onClick(()=>{
-                this.currentWords = this.wordsDataSource[item]
+                this.currentWordsIndex = index
               })
             }
           }, (item:string)=> item)
         }.width('100%').height('100%').alignListItem(ListItemAlign.Center)
-      }.width('10%').height('100%').backgroundColor(Color.White)
+      }.width('13%').height('100%').backgroundColor(Color.White)
       Row()
         .backgroundColor('#f1f1f1')
         .opacity(0.5)
@@ -90,7 +98,7 @@ export struct  PinyinDetailView{
       // 右侧具体拼音栏
       Row(){
         Grid(){
-          ForEach(this.currentWords, (item:SuggestionWord)=>{
+          ForEach(this.words.getSuggestionList(this.currentWordsIndex), (item:SuggestionWord)=>{
             GridItem(){
               Button(){
                 Text(item.showName)
@@ -103,7 +111,7 @@ export struct  PinyinDetailView{
               .borderWidth({bottom: 0.01})
               .type(ButtonType.Normal)
               .onClick(()=>{
-                // this.onButtonClick(item)
+                this.onSuggestWordClick(item)
               })
             }
           }, (item:SuggestionWord)=>item.id)
@@ -112,14 +120,14 @@ export struct  PinyinDetailView{
         .width('100%')
         .height('100%')
         // .rowsGap(0.2)
-      }.width('80%').height('100%')
+      }.layoutWeight(1).height('100%')
       .borderRadius(5)
       .backgroundColor(Color.Transparent)
       .margin({right: 5})
 
       // 右侧按钮栏
       Row(){
-        Column({space: 4}){
+        Column({space: 6}){
           ForEach(this.rightKeyData, (item: KeyButtonData, index: number) => {
             if(item.key == 'del'){
               Button() {
@@ -146,7 +154,20 @@ export struct  PinyinDetailView{
             }else{
               Button() {
                 Column() {
-                  Text(item.name).fontSize(14)
+                  if(item.key == 'allOrWord'){
+                    Text(){
+                      Span('全').fontSize(14)
+                      Span('/字').fontSize(12).fontColor(Color.Grey)
+                    }
+                  }else if(item.key == 'pinyinOrWuBi'){
+                    Text(){
+                      Span('拼').fontSize(14)
+                      Span('/笔').fontSize(12).fontColor(Color.Grey)
+                    }
+                  }else{
+                    Text(item.name).fontSize(14)
+                  }
+
                 }
               }.backgroundColor('#dde3ec')
               .type(ButtonType.Normal)
@@ -162,38 +183,55 @@ export struct  PinyinDetailView{
         }.width('100%').height('100%').backgroundColor('#eff0f4')
         .borderRadius(5)
         .justifyContent(FlexAlign.SpaceAround)
-      }.width('10%').height('100%').backgroundColor(Color.Green)
+      }.width('15%').height('100%').backgroundColor(Color.Transparent)
 
-    }.width('100%').height('100%')
+    }.width('100%')
+    .layoutWeight(1)
+    .backgroundColor(Color.Transparent)
+    .padding({left: 16, right: 16, top: 2, bottom: 4})
   }
 
+
+  /**
+   * 候选词点击事件
+   * @param word
+   */
+  onSuggestWordClick(word: SuggestionWord){
+      // 完成拼写，更新按键状态
+      this.useWords.push(word)
+  }
 
   /**
    * 按钮点击事件
    * @param item
    */
   onButtonClick(item:KeyButtonData){
-/*    if(item.key == 'chineseOrEnglish'){
+    if(item.key == 'chineseOrEnglish'){
       switchChineseOrEnglish()
-    }else if(item.key == 'number'){
-      this.numberMode = !this.numberMode
     }else if(item.key == 'back'){
-      this.numberMode = false;
-    }else if(item.key == 'zero' || item.key == 'space' || item.key == 'enter'){
-      this.fillText(item)
+      this.showPinYinListPage = false;
     }else if(item.key == 'reInput'){
-      let length = this.getShowInputContent().length
-      keyboardController.clearText(length)
+     // let length = this.getShowInputContent().length
+     // keyboardController.clearText(length)
     }else if(item.key == 'del'){
       keyboardController.deleteForward(1);
       this.inputContent.pop()
     }else{
-      let inputMethodSubType =  inputMethod.getCurrentInputMethodSubtype()
-      if(null == inputMethodSubType || inputMethodSubType.id == 'CnInputMethodExtAbility'){
-        this.pushToContent(item)
-      }else{
-        this.fillText(item)
-      }
-    }*/
+    }
+  }
+
+  /**
+   * 点击按键之后的事件
+   * @param inputData
+   */
+  pushToContent(inputData:KeyButtonData){
+    this.inputContent.push(inputData)
+    if(inputData.fillStr){
+      // 设置输入框里面的预上屏幕文本
+      // let previewText = this.getShowInputContent()
+      // keyboardController.setPreviewText(previewText)
+    }
   }
 }
+
+

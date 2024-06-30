@@ -65,6 +65,14 @@ export class KeyboardController {
     }
   }
 
+  /**
+   * 获取资源路径
+   * @returns
+   */
+  getResourceDir():string|undefined{
+    return this.mContext?.resourceDir
+  }
+
   private initWindow(): void // 初始化窗口
   {
     if(this.mContext === undefined) {

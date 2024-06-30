@@ -1,9 +1,11 @@
 import { spellToWord } from '../../cncharInput/cnchar/util/SpellToWordUtil';
 import { WordDataSource } from '../dao/DataSouce';
+import WordRepImport from '../dao/WordRepImport';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
 import keyboardController from '../model/KeyboardController';
 import {  MainInputPanel } from '../view/MainInputPanl';
-import { SmartSuggestionBar } from '../view/SmartSuggestionBar';
+import { PinyinDetailView } from '../view/PinyinDetailView';
+import { SmartSuggestionBar, SuggestionWord } from '../view/SmartSuggestionBar';
 
 
 @Component
@@ -39,6 +41,9 @@ struct InputIndex {
   // 是否为数字键盘格式
   @Provide numberMode:boolean = false;
   @Provide words: WordDataSource = new WordDataSource();
+  @Provide showPinYinListPage:boolean = false;
+  // 已使用的
+  @Provide useWords:Array<SuggestionWord> = []
 
   build() {
     Stack() {
@@ -55,7 +60,12 @@ struct InputIndex {
         }) {
           Column({ space: 5 }) {
             SmartSuggestionBar()
-            MainInputPanel()
+            if(this.showPinYinListPage){
+              PinyinDetailView()
+            }else{
+              MainInputPanel()
+            }
+
             BottomTool()
           }.width('100%').height('100%')
 
@@ -70,5 +80,7 @@ struct InputIndex {
     }
     .position({ x: 0, y: 0 }).zIndex(99999)
   }
+
+
 }
 

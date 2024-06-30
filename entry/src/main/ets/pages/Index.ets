@@ -1,50 +1,54 @@
 import { KeyButtonData } from '../InputMethodExtensionAbility/data/KeyButtonDataManager';
-import { BottomTool} from '../InputMethodExtensionAbility/pages/InputIndex';
- import {  MainInputPanel } from '../InputMethodExtensionAbility/view/MainInputPanl';
+import { BottomTool } from '../InputMethodExtensionAbility/pages/InputIndex';
+import { MainInputPanel } from '../InputMethodExtensionAbility/view/MainInputPanl';
 import { EnglishMainInputPanel } from '../InputMethodExtensionAbility/view/EnglishMainInputPanl';
-import { SmartSuggestionBar } from '../InputMethodExtensionAbility/view/SmartSuggestionBar';
+import { SmartSuggestionBar, SuggestionWord } from '../InputMethodExtensionAbility/view/SmartSuggestionBar';
 import { WordDataSource } from '../InputMethodExtensionAbility/dao/DataSouce';
+import WordRepImport from '../InputMethodExtensionAbility/dao/WordRepImport';
 
 @Entry
 @Component
 struct Index {
-
-   // 记录输入的键值
-   @Provide inputContent:Array<KeyButtonData> = []
+  // 记录输入的键值
+  @Provide inputContent: Array<KeyButtonData> = []
   // 是否为数字键盘格式
-   @Provide numberMode:boolean = false;
-   // 英文输入法模式
-   @State englishMode:boolean = false
-   //
-   @Provide words: WordDataSource = new WordDataSource();
+  @Provide numberMode: boolean = false;
+  // 英文输入法模式
+  @State englishMode: boolean = false
+  //
+  @Provide words: WordDataSource = new WordDataSource();
+  @Provide showPinYinListPage: boolean = false;
+  // 已使用的
+  @Provide useWords: Array<SuggestionWord> = []
 
   build() {
-    Column(){
-      Row(){
-        Column({space: 5}){
+    Column() {
+      Row() {
+        Column({ space: 5 }) {
           TextInput()
-          Button("切换至" + (this.englishMode?"中":"英") + "文输入法界面")
+          Button("切换至" + (this.englishMode ? "中" : "英") + "文输入法界面")
             .backgroundColor(Color.Transparent)
             .borderColor(Color.Black)
             .fontColor(Color.Black)
             .type(ButtonType.Normal)
-            .onClick(()=>{
+            .onClick(() => {
               this.englishMode = !this.englishMode;
             })
         }.width('100%').height(50)
 
       }.width('100%').height('50%')
       .backgroundColor(Color.Transparent)
-      Row(){
-        Stack(){
 
-          if(this.englishMode){
+      Row() {
+        Stack() {
+
+          if (this.englishMode) {
             Column({ space: 5 }) {
               SmartSuggestionBar()
               EnglishMainInputPanel()
               BottomTool()
             }.width('100%').height('100%')
-          }else{
+          } else {
             Column({ space: 5 }) {
               SmartSuggestionBar()
               MainInputPanel()
@@ -59,4 +63,9 @@ struct Index {
     .height('100%')
     .width('100%')
   }
+
+  aboutToAppear(): void {
+    WordRepImport.copySqlFileToStorage()
+  }
+
 }
