@@ -23,6 +23,8 @@ struct Index {
 
   @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
 
+  @Provide pageWords:Array<SuggestionWord> = []
+
   build() {
     Column() {
       Row() {

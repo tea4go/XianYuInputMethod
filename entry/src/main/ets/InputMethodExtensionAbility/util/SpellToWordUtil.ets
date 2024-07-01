@@ -2,7 +2,7 @@ import WordService from '../dao/WordsService';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
 import { SuggestionWord } from '../view/SmartSuggestionBar';
 import { ArrayList, JSON, util } from '@kit.ArkTS';
-import { Words } from '../data/Words';
+import { Words } from '../pages/Words';
 import Logger  from './Logger';
 import { PinyinGroup } from '../dao/DataSouce';
 
@@ -14,10 +14,13 @@ export interface PinyinSuggestResult{
   words:SuggestionWord[]
 }
 
-export function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean):  PinyinSuggestResult {
+export async  function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean, callback:(result:PinyinSuggestResult)=>void) {
   // 未创建词语的按键
   let notUseKeyButtonData = keys.filter((value)=> !value.createWord)
-
+  if(notUseKeyButtonData.length == 0){
+    callback({pinyin:[], words:[]})
+    return
+  }
   let initialData = getDictInfo();
   let spellDictJian = getSpellDictJian()
 
@@ -34,8 +37,16 @@ export function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean):  P
     result.push(suggestionWord)
     // 中文模式
   }else{
-    // 生成输入按键可能生成的拼音列表
+    // 生成输入按键可能生成的拼音列表 abc def => ad, ad, af, bd, be, bf, cd, ce, cf
     let pinyinList:Array<SuggestionWord> = getPinyinList(notUseKeyButtonData);
+    //
+    for (let i = notUseKeyButtonData.length-2; i >=0 ; i--) {
+      let subArray = notUseKeyButtonData.slice(0, i+1)
+      let subPinList = getPinyinList(subArray)
+      if(subPinList.length >  0){
+        pinyinList = pinyinList.concat(subPinList)
+      }
+    }
     // 第一个词可能的所有拼音
     let firstWordAllPossiblePinyin:Array<string> = []
     let pinyinGroup:Array<PinyinGroup> = []
@@ -59,13 +70,15 @@ export function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean):  P
 
     for (let pinyinText of firstWordAllPossiblePinyin) {
       // 查找第一页数据
-      let words = WordService.queryByKeywordPage(pinyinText, 1, 10)
-      suggestWords = suggestWords.concat(convert2SuggestWord(words)) ;
+      WordService.queryByKeywordPage(pinyinText, 1, 10, (words)=>{
+        suggestWords = suggestWords.concat(convert2SuggestWord(words)) ;
+        callback({pinyin: pinyinGroup, words: suggestWords});
+      })
     }
-    return {pinyin: pinyinGroup, words: suggestWords};
+
   }
 
-  return {pinyin: [], words: []};
+  callback({pinyin: [], words: []}) ;
 }
 
 /**

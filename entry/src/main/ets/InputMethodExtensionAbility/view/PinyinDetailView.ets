@@ -37,7 +37,7 @@ export struct  PinyinDetailView{
   @Consume useWords:Array<SuggestionWord>
 
   // 当前界面展示的拼音对应的联想词
-  @State pageWords:Array<SuggestionWord> = []
+  @Consume pageWords:Array<SuggestionWord>
 
 
   @MockSetup
@@ -48,8 +48,9 @@ export struct  PinyinDetailView{
 
   onPinyinListUpdate(){
     if(this.pinyinList.totalCount() > 0){
-      let suggestWords = WordService.queryByKeyword(this.pinyinList.getData(0).name)
-      this.pageWords =  convert2SuggestWord(suggestWords);
+      WordService.queryByKeyword(this.pinyinList.getData(0).name, (suggestWords)=>{
+        this.pageWords =  convert2SuggestWord(suggestWords);
+      })
     }
   }
 
@@ -101,11 +102,14 @@ export struct  PinyinDetailView{
                 this.currentWordsIndex = index
                 // 判断当前是不是完整拼音
                 if(isFullPinyin(item.name)){
-                  let words = WordService.queryByKeyword(item.name)
-                  this.pageWords = convert2SuggestWord(words)
+                  WordService.queryByKeyword(item.name, (words)=>{
+                    this.pageWords = convert2SuggestWord(words)
+                  })
                 }else{
-                  let words = WordService.queryAllByKeywordForLike(item.name, item.name.length)
-                  this.pageWords = convert2SuggestWord(words)
+                  WordService.queryAllByKeywordForLike(item.name, item.name.length, (words)=>{
+                    this.pageWords = convert2SuggestWord(words)
+                  })
+
                 }
               })
             }

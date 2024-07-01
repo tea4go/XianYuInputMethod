@@ -3,13 +3,14 @@
  */
 import { KeyButtonData } from '../data/KeyButtonDataManager'
 import { inputMethod } from '@kit.IMEKit'
-import { PinyinSuggestResult, spellToWord } from '../util/SpellToWordUtil'
+import { convert2SuggestWord, isFullPinyin, PinyinSuggestResult, spellToWord } from '../util/SpellToWordUtil'
 import keyboardController from '../model/KeyboardController'
 import {PinyinDataSource, WordSuggestDataSource} from "../dao/DataSouce"
 import { util } from '@kit.ArkTS'
 import { FaultLogger } from '@kit.PerformanceAnalysisKit'
 import Logger from '../util/Logger'
 import { US_SUB_TYPE_ID } from '../constant/InputMethConstant'
+import WordService from '../dao/WordsService'
 
 /**
  * 智能联想栏
@@ -31,6 +32,7 @@ export struct SmartSuggestionBar {
   suggestWords: WordSuggestDataSource = new WordSuggestDataSource()
   // 是否正在展示拼音列表界面
   @Consume showPinYinListPage:boolean;
+  @Consume pageWords:Array<SuggestionWord>
 
   build() {
     Row(){
@@ -95,6 +97,18 @@ export struct SmartSuggestionBar {
         }.width(40).height(40).backgroundColor(Color.Transparent)
         .onClick(()=>{
           this.showPinYinListPage = true;
+          let firstPinyin:string = this.pinyinList.getData(0)?.name
+          // 加载第一页文字
+          if(isFullPinyin(firstPinyin)){
+             WordService.queryByKeyword(firstPinyin, (words)=>{
+              this.pageWords = convert2SuggestWord(words)
+            })
+
+          }else{
+            WordService.queryAllByKeywordForLike(firstPinyin, firstPinyin.length, (words)=>{
+              this.pageWords = convert2SuggestWord(words)
+            })
+          }
         })
       }else{
         InputToolBar()
@@ -146,7 +160,7 @@ export struct SmartSuggestionBar {
         let firstSuggestWordGroup = this.suggestWords
         if(firstSuggestWordGroup && firstSuggestWordGroup.totalCount() > 0){
           let firstWord = firstSuggestWordGroup.getData(0).previewText
-          showText.push(new PreviewText(firstWord.charAt(0)+"'", false))
+          showText.push(new PreviewText(firstWord + "'", false))
         }else{
           if (value.fillStr) {
             showText.push(new PreviewText(value.fillStr.charAt(0), false))
@@ -166,14 +180,15 @@ export struct SmartSuggestionBar {
    * 输入内容更新时调用事件
    */
   onInputUpdate(){
-    let suggestWords = getAssociationWord(this.inputContent)
-    Logger.info(`共查询到${suggestWords.words.length}个联想词`)
-    this.pinyinList.replaceAllData(suggestWords.pinyin)
-    if(this.pinyinList.totalCount() == 0){
-      this.showPinYinListPage = false
-    }
-    this.suggestMode = suggestWords.words.length > 0
-    this.suggestWords.replaceAllData(suggestWords.words)
+    getAssociationWord(this.inputContent, (suggestWords)=>{
+      Logger.info(`共查询到${suggestWords.words.length}个联想词`)
+      this.pinyinList.replaceAllData(suggestWords.pinyin)
+      if(this.pinyinList.totalCount() == 0){
+        this.showPinYinListPage = false
+      }
+      this.suggestMode = suggestWords.words.length > 0
+      this.suggestWords.replaceAllData(suggestWords.words)
+    })
   }
 
 }
@@ -252,13 +267,14 @@ export class SuggestionWord{
  * 获取联想词
  * @returns
  */
-function getAssociationWord(keyWord:KeyButtonData[]):PinyinSuggestResult{
+async function  getAssociationWord(keyWord:KeyButtonData[], callback:(result:PinyinSuggestResult)=>void){
   if(keyWord.length == 0){
-    return {pinyin: [], words: []}
+    callback({pinyin: [], words: []})
   }
   let subType = inputMethod.getCurrentInputMethodSubtype()
   let englishMode = subType.id == US_SUB_TYPE_ID
-  let result = spellToWord(keyWord, englishMode)
-  return result
+  spellToWord(keyWord, englishMode, (result)=>{
+    callback(result)
+  })
 }
 

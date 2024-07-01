@@ -1,4 +1,5 @@
 import { describe, beforeAll, beforeEach, afterEach, afterAll, it, expect } from '@ohos/hypium';
+import { trieMain } from '../main/ets/InputMethodExtensionAbility/data/PinYinTrieNode';
 
 export default function localUnitTest() {
   describe('localUnitTest', () => {
@@ -6,6 +7,8 @@ export default function localUnitTest() {
     beforeAll(() => {
       // Presets an action, which is performed only once before all test cases of the test suite start.
       // This API supports only one parameter: preset action function.
+      trieMain()
+
     });
     beforeEach(() => {
       // Presets an action, which is performed before each unit test case starts.

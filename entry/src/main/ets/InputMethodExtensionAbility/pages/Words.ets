@@ -1,9 +1,11 @@
+
 import ArrayList from '@ohos.util.ArrayList';
 import relationalStore from '@ohos.data.relationalStore';
 import { ValuesBucket } from '@kit.ArkData';
+import { KeyButtonData } from '../data/KeyButtonDataManager';
 import { ColumnInfo } from '../entity/ColumnInfo';
 import { objToNumber, objToString, toEntityList } from '../util/EntityUtil';
-import { KeyButtonData } from './KeyButtonDataManager';
+
 
 /**
  *
@@ -48,6 +50,11 @@ export class Words {
    */
   btn:Array<KeyButtonData> = []
 
+  /**
+   * 拼音九宫格对应的编码
+   */
+  nineGridKeyCode: string = ''
+
   static getTableName(): string {
     return "WORDS";
   }
@@ -55,7 +62,8 @@ export class Words {
   static getColumnInfo(): ColumnInfo[] {
     return [new ColumnInfo("WORD_ID", "number"), new ColumnInfo("WORD", "string"), new ColumnInfo("PINYIN", "string"),
       new ColumnInfo("IS_COMMON", "number"), new ColumnInfo("FREQUENCY", "number"), new ColumnInfo("REP_ID", "string"),
-      new ColumnInfo("TONE", "number"), new ColumnInfo("GROUP_PIN", "string")];
+      new ColumnInfo("TONE", "number"), new ColumnInfo("GROUP_PIN", "string"),
+      new ColumnInfo("NINE_GRID_KEY_CODE", "string")];
   }
 
   static mapToEntity(map: Map<string, string | number | Date | null>): Words {
@@ -76,6 +84,8 @@ export class Words {
     entity.tone = tone;
     let groupPin = objToString(map.get("GROUP_PIN"))
     entity.groupPin = groupPin;
+    let nineGridKeyCode = objToString(map.get("NINE_GRID_KEY_CODE"))
+    entity.nineGridKeyCode = nineGridKeyCode;
     return entity;
   }
 
@@ -133,6 +143,9 @@ export class Words {
     if (data.groupPin) {
       this.groupPin = data.groupPin;
     }
+    if (data.nineGridKeyCode) {
+      this.nineGridKeyCode = data.nineGridKeyCode;
+    }
   }
 
   toJson(): ValuesBucket {
@@ -144,7 +157,8 @@ export class Words {
       FREQUENCY: this.frequency ? this.frequency : null,
       REP_ID: this.repId ? this.repId : null,
       TONE: this.tone ? this.tone : null,
-      GROUP_PIN: this.groupPin ? this.groupPin : null
+      GROUP_PIN: this.groupPin ? this.groupPin : null,
+      NINE_GRID_KEY_CODE: this.nineGridKeyCode ? this.nineGridKeyCode : null
     };
   }
 
@@ -211,6 +225,14 @@ export class Words {
   getGroupPin(): string {
     return this.groupPin;
   }
+
+  setNineGridKeyCode(nineGridKeyCode: string): void {
+    this.nineGridKeyCode = nineGridKeyCode;
+  }
+
+  getNineGridKeyCode(): string {
+    return this.nineGridKeyCode;
+  }
 }
 
 interface IJsonWords {
@@ -221,7 +243,8 @@ interface IJsonWords {
   FREQUENCY: number;
   REP_ID: string;
   TONE: number;
-  GROUP_PIN: string
+  GROUP_PIN: string;
+  NINE_GRID_KEY_CODE: string
 }
 
 export interface IWords {
@@ -233,4 +256,5 @@ export interface IWords {
   repId?: string | null;
   tone?: number | null;
   groupPin?: string | null;
+  nineGridKeyCode?: string | null;
 }

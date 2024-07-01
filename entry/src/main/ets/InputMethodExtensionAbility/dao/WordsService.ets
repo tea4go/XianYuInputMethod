@@ -1,5 +1,5 @@
 import GlobalContext from '../context/GlobalContext';
-import { Words } from '../data/Words'
+import { Words } from '../pages/Words'
 import { ArrayList } from '@kit.ArkTS';
 import { relationalStore } from '@kit.ArkData';
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -13,7 +13,27 @@ namespace WordService{
    * @param pageSize
    * @returns
    */
-  export function queryByKeywordPage(keyword:string, pageIndex:number, pageSize:number):ArrayList<Words>{
+  export function queryByKeywordPage(keyword:string, pageIndex:number, pageSize:number, callback:(result:ArrayList<Words>)=>void):void{
+    let store = GlobalContext.getContext().getWordDb()
+    if(!store){
+      Logger.error('store err , store is ' + store)
+      callback(new ArrayList())
+    }
+    let offset = (pageIndex - 1) * pageSize;
+    let likeCondition = "" + keyword + "%"
+    let querySql = 'select * from words where pinyin like ? order by pinyin, frequency desc limit ? offset ?'
+    store.querySql(querySql, [likeCondition, pageSize, offset], (err, resultSet)=>{
+      if(err){
+        Logger.error(err.message)
+        callback(new ArrayList())
+        return
+      }
+      let list = Words.resultSetToList(resultSet)
+      callback(list)
+    })
+  }
+
+  export function queryByKeywordPageSync(keyword:string, pageIndex:number, pageSize:number):ArrayList<Words>{
     let store = GlobalContext.getContext().getWordDb()
     if(!store){
       Logger.error('store err , store is ' + store)
@@ -34,7 +54,26 @@ namespace WordService{
    * @param keyword
    * @returns
    */
-  export function queryByKeyword(keyword:string):ArrayList<Words>{
+  export async  function queryByKeyword(keyword:string, callback:(result:ArrayList<Words>)=>void){
+    let store = GlobalContext.getContext().getWordDb()
+    if(!store){
+      Logger.error('store err , store is ' + store)
+      callback(new ArrayList())
+    }
+    let querySql = 'select * from words where pinyin = ? order by pinyin, frequency'
+    store.querySql(querySql, [keyword], (err, resultSet)=>{
+      if(err){
+        Logger.error(err.message)
+        callback(new ArrayList())
+        return
+      }
+      let list = Words.resultSetToList(resultSet)
+      callback(list)
+    })
+
+  }
+
+  export function queryByKeywordSync(keyword:string):ArrayList<Words>{
     let store = GlobalContext.getContext().getWordDb()
     if(!store){
       Logger.error('store err , store is ' + store)
@@ -52,7 +91,21 @@ namespace WordService{
  * @param length
  * @returns
  */
-  export function queryAllByKeywordForLike(keyword:string, length:number):ArrayList<Words>{
+  export async  function queryAllByKeywordForLike(keyword:string, length:number, callback:(result:ArrayList<Words>)=>void){
+    let store = GlobalContext.getContext().getWordDb()
+    if(!store){
+      Logger.error('store err , store is ' + store)
+      callback(new ArrayList())
+    }
+    let likeCondition = "" + keyword + "%"
+    let querySql = 'select * from words where pinyin like ? AND LENGTH(word) = ? order by pinyin, frequency'
+    store.querySql(querySql, [likeCondition, length], (err, resultSet)=>{
+      let list = Words.resultSetToList(resultSet)
+      callback(list)
+    })
+  }
+
+  export function queryAllByKeywordForLikeSync(keyword:string, length:number):ArrayList<Words>{
     let store = GlobalContext.getContext().getWordDb()
     if(!store){
       Logger.error('store err , store is ' + store)

@@ -42,6 +42,7 @@ struct InputIndex {
   // 已使用的
   @Provide useWords:Array<SuggestionWord> = []
   @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
+  @Provide pageWords:Array<SuggestionWord> = []
 
   build() {
     Stack() {
