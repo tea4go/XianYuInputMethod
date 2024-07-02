@@ -1,5 +1,5 @@
 import GlobalContext from '../context/GlobalContext';
-import { Words } from '../pages/Words'
+import { Words } from '../entity/Words'
 import { ArrayList } from '@kit.ArkTS';
 import { relationalStore } from '@kit.ArkData';
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -23,6 +23,36 @@ namespace WordService{
     let likeCondition = "" + keyword + "%"
     let querySql = 'select * from words where pinyin like ? order by pinyin, frequency desc limit ? offset ?'
     store.querySql(querySql, [likeCondition, pageSize, offset], (err, resultSet)=>{
+      if(err){
+        Logger.error(err.message)
+        callback(new ArrayList())
+        return
+      }
+      let list = Words.resultSetToList(resultSet)
+      callback(list)
+    })
+  }
+
+  /**
+   * 通过九宫格编码查询
+   * @param nineGridKeyCode
+   * @param keyword
+   * @param pageIndex
+   * @param pageSize
+   * @param callback
+   */
+  export function queryByNineGridKeyCode(nineGridKeyCode:string, pinyin:string, pageIndex:number, pageSize:number, callback:(result:ArrayList<Words>)=>void):void {
+    let store = GlobalContext.getContext().getWordDb()
+    if(!store){
+      Logger.error('store err , store is ' + store)
+      callback(new ArrayList())
+    }
+    let offset = (pageIndex - 1) * pageSize;
+    let likeCondition = "" + nineGridKeyCode + "%"
+    let pinyinLikeCondition = pinyin + '%'
+    let querySql = 'select * from words where nine_grid_key_code like ? or pinyin like ? order by LENGTH(pinyin), pinyin, frequency desc limit ? offset ?'
+    Logger.info(`execute: select * from words where nine_grid_key_code like '${likeCondition}' or pinyin like '${pinyinLikeCondition}' order by LENGTH(pinyin), pinyin, frequency desc limit ${pageSize} offset ${offset}`)
+    store.querySql(querySql, [likeCondition, pinyinLikeCondition, pageSize, offset], (err, resultSet)=>{
       if(err){
         Logger.error(err.message)
         callback(new ArrayList())

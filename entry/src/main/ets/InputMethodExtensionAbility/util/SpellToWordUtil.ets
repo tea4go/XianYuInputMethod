@@ -1,10 +1,12 @@
 import WordService from '../dao/WordsService';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
 import { SuggestionWord } from '../view/SmartSuggestionBar';
-import { ArrayList, JSON, util } from '@kit.ArkTS';
-import { Words } from '../pages/Words';
+import { ArrayList, HashMap, JSON, util } from '@kit.ArkTS';
+import { Words } from '../entity/Words';
 import Logger  from './Logger';
 import { PinyinGroup } from '../dao/DataSouce';
+import { getAllPinyinList } from '../data/PinyinListData';
+import { getAllPossiblePinyin, smartSetNextStrSeg } from '../data/PinYinTrieNode';
 
 /**
  * 拼音搜索结果
@@ -14,15 +16,32 @@ export interface PinyinSuggestResult{
   words:SuggestionWord[]
 }
 
-export async  function spellToWord(keys: Array<KeyButtonData>, englishMode:boolean, callback:(result:PinyinSuggestResult)=>void) {
+/**
+ * 预览文本的锁定状态
+ */
+export enum PreviewTextLockedState{
+  // 全部锁定
+  ALL_LOCKED,
+  // 前部分锁定
+  PART_LOCKED,
+  // 未锁定
+  ALL_NOT_LOCKED
+}
+
+/**
+ * 拼音转中文
+ * @param previewText
+ * @param keys
+ * @param englishMode
+ * @param callback
+ */
+export async  function spellToWord(previewText:string, keys: Array<KeyButtonData>, englishMode:boolean, callback:(result:PinyinSuggestResult)=>void) {
   // 未创建词语的按键
   let notUseKeyButtonData = keys.filter((value)=> !value.createWord)
   if(notUseKeyButtonData.length == 0){
     callback({pinyin:[], words:[]})
     return
   }
-  let initialData = getDictInfo();
-  let spellDictJian = getSpellDictJian()
 
   // 如果没有找到，则逐字处理
   let result: SuggestionWord[] = [];
@@ -35,50 +54,142 @@ export async  function spellToWord(keys: Array<KeyButtonData>, englishMode:boole
     })
     let suggestionWord = new SuggestionWord(finalStr, finalStr, notUseKeyButtonData)
     result.push(suggestionWord)
+    callback({pinyin: [], words: []}) ;
     // 中文模式
   }else{
+    // 获取九宫格编码
+    let nineGridKeyCode = getNineGridKeyCodeFromKeys(keys)
     // 生成输入按键可能生成的拼音列表 abc def => ad, ad, af, bd, be, bf, cd, ce, cf
     let pinyinList:Array<SuggestionWord> = getPinyinList(notUseKeyButtonData);
-    //
-    for (let i = notUseKeyButtonData.length-2; i >=0 ; i--) {
-      let subArray = notUseKeyButtonData.slice(0, i+1)
-      let subPinList = getPinyinList(subArray)
-      if(subPinList.length >  0){
-        pinyinList = pinyinList.concat(subPinList)
-      }
-    }
+
     // 第一个词可能的所有拼音
     let firstWordAllPossiblePinyin:Array<string> = []
     let pinyinGroup:Array<PinyinGroup> = []
+    // 所有拼音列表
+    let allPin:string[] = getAllPinyinList()
     for (let pinyin of pinyinList) {
       let pinyinText = pinyin.previewText
-      // 声母单独存在可能没有对应汉字，跳过
-      firstWordAllPossiblePinyin.push(pinyinText)
-      pinyinGroup.push(new PinyinGroup(pinyinText, util.generateRandomUUID(), pinyin.keys))
-
-      // 获取所有可能的拼音列表
-      // 在spellDictJian中查找拼音对应的汉字
-      const hanzhiList = spellDictJian[pinyinText];
-      if (hanzhiList && hanzhiList.length > 0) {
+      if(allPin.indexOf(pinyinText) != -1){
         firstWordAllPossiblePinyin.push(pinyinText)
         pinyinGroup.push(new PinyinGroup(pinyinText, util.generateRandomUUID(), pinyin.keys))
       }
     }
     showWords(pinyinList)
     Logger.info('所有可能的拼音为:' + JSON.stringify(firstWordAllPossiblePinyin))
-    let suggestWords:Array<SuggestionWord> = []
 
-    for (let pinyinText of firstWordAllPossiblePinyin) {
-      // 查找第一页数据
-      WordService.queryByKeywordPage(pinyinText, 1, 10, (words)=>{
-        suggestWords = suggestWords.concat(convert2SuggestWord(words)) ;
+
+    // 查找第一页数据
+    WordService.queryByNineGridKeyCode(nineGridKeyCode, previewText, 1, 10, (words)=>{
+      let suggestWords:Array<SuggestionWord> = []
+      // 建立九宫格按键到code的映射
+      let keyMap:HashMap<string, KeyButtonData> = getKeyMap(pinyinGroup);
+      // 判断是否查询不到完整的联想词, 保底返回一个单字查询的结果
+      if(words.length == 0){
+        suggestWords = suggestWords.concat(getDefaultSuggestWords(keys, previewText)) ;
         callback({pinyin: pinyinGroup, words: suggestWords});
-      })
-    }
+      }else{
+        suggestWords = suggestWords.concat(convert2SuggestWord(keyMap, words)) ;
+        callback({pinyin: pinyinGroup, words: suggestWords});
+      }
 
+    })
   }
+}
 
-  callback({pinyin: [], words: []}) ;
+/**
+ * 获取默认的词汇
+ * @param previewText
+ */
+function getDefaultSuggestWords(keys:KeyButtonData[], previewText:string):SuggestionWord[]{
+  let result:SuggestionWord[] = []
+  let previewSplit = previewText.split("'")
+
+  let arrayList = new Array<Array<SuggestionWord>>()
+
+  let offset:number = 0
+  previewSplit.forEach((pinyinText)=>{
+    let len = pinyinText.length
+    let subKeys:KeyButtonData[] = keys.slice(0+offset, len)
+    let keyMap = getKeyMapForKeys(subKeys)
+    // 在spellDictJian中查找拼音对应的汉字
+    let hanzhiList = WordService.queryByKeywordPageSync(pinyinText, 1, 5)
+    if (hanzhiList && hanzhiList.length > 0) {
+      let chineseCharacters:Array<SuggestionWord> = convert2SuggestWord(keyMap, hanzhiList)
+      if(chineseCharacters.length > 0){
+        // 只取前五个
+        if(chineseCharacters.length > 1){
+          let subChars = chineseCharacters.slice(0, 1)
+          arrayList.push(subChars)
+        }else{
+          arrayList.push(chineseCharacters)
+        }
+      }
+    }
+    offset+=len
+  })
+  //
+  // 使用cartesianProduct函数并转换为字符串组合 生成所有可能的拼音组合，待优化过滤不可能为拼音的字符串
+
+  const productResults = cartesianProductTraditional(arrayList);
+  // 合并联想词
+  productResults.forEach((words)=>{
+    let showName = ""
+    let previewText = ""
+    let sKeys = new Array<KeyButtonData>()
+    words.forEach((sword)=>{
+      showName+=sword.showName
+      previewText+=sword.previewText
+      sKeys = sKeys.concat(sword.keys)
+    })
+    let sword = new SuggestionWord(showName, previewText, keys)
+    result.push(sword)
+  })
+
+  return result
+}
+
+/**
+ * 获取预输入文本锁定状态
+ * @param keys
+ * @returns
+ */
+export function getPreviewTextLockedState(keys:Array<KeyButtonData>):PreviewTextLockedState{
+  let allLen = keys.length;
+  let lockedLen = keys.filter((key)=> key.locked).length
+  if(lockedLen == 0){
+    return PreviewTextLockedState.ALL_NOT_LOCKED
+  }else if(allLen == lockedLen){
+    return PreviewTextLockedState.ALL_LOCKED
+  }else{
+    return PreviewTextLockedState.PART_LOCKED
+  }
+}
+
+
+export function getKeyMap(pinyinGroup:Array<PinyinGroup>):HashMap<string, KeyButtonData>{
+  let keyMap:HashMap<string, KeyButtonData> = new HashMap<string, KeyButtonData>();
+  pinyinGroup.forEach((pinyinG)=>{
+    pinyinG.keys.forEach((key)=>{
+      keyMap.set(key.upName, key);
+    })
+  })
+  return keyMap
+}
+
+/**
+ * 取第一个值为有效值，第二个值覆盖
+ * @param pinyinGroup
+ * @returns
+ */
+export function getKeyMapForKeys(pinyinGroup:Array<KeyButtonData>):HashMap<string, KeyButtonData>{
+  let keyMap:HashMap<string, KeyButtonData> = new HashMap<string, KeyButtonData>();
+  pinyinGroup.forEach((pinyinG)=>{
+    // 以第一项为准
+    if(!keyMap.hasKey(pinyinG.upName)){
+      keyMap.set(pinyinG.upName, pinyinG);
+    }
+  })
+  return keyMap
 }
 
 /**
@@ -104,13 +215,21 @@ function showWords(words:Array<SuggestionWord>):void{
   Logger.info('生成的所有拼音列表为:' + str)
 }
 
-export  function convert2SuggestWord(words:ArrayList<Words>): SuggestionWord[]{
+export  function convert2SuggestWord(keyMap:HashMap<string, KeyButtonData>, words:ArrayList<Words>): SuggestionWord[]{
     if(words){
       let list:Array<SuggestionWord> = []
       words.forEach((value)=>{
         let word = value.word
         let pinyin = value.pinyin
-        let keys:Array<KeyButtonData> = value.btn
+        let keys:Array<KeyButtonData> = []
+        let nineGridKeyCodeArray = Array.from(value.nineGridKeyCode)
+        nineGridKeyCodeArray.forEach((nineGridKeyCode)=>{
+          let value = keyMap.get(nineGridKeyCode)
+          if(value){
+            keys.push(value)
+          }
+        })
+
         let suggestionWord = new SuggestionWord(word, pinyin, keys)
         list.push(suggestionWord)
       })
@@ -121,13 +240,24 @@ export  function convert2SuggestWord(words:ArrayList<Words>): SuggestionWord[]{
     }
 }
 
+/**
+ * 获取按键能输入的字符数组
+ * @param inputContent
+ * @returns
+ */
 function getInputStrArray(inputContent:KeyButtonData[]):string[]{
   let result:Array<string> = []
   if(inputContent){
     inputContent.forEach((value, index)=>{
       let fillStr = value.fillStr
-      if(fillStr){
-        result.push(fillStr)
+      let locked = value.locked
+      // 已锁定的词汇不再提供多个选项
+      if(locked && value.selectStr != null){
+        result.push(value.selectStr)
+      }else{
+        if(fillStr){
+          result.push(fillStr)
+        }
       }
     })
   }
@@ -164,23 +294,114 @@ export interface DictInfo{
  * @returns
  */
 function getPinyinList(keys:KeyButtonData[]):Array<SuggestionWord>{
-  let str:string[] = getInputStrArray(keys)
+  // 预输入文本锁定状态
+  let previewTextLockedState = getPreviewTextLockedState(keys)
+
+  let shouldHandleKeys = new Array<KeyButtonData>()
+  if(previewTextLockedState == PreviewTextLockedState.ALL_LOCKED){
+    // 获取最后倒数第二个锁定的词汇
+    for (let i = keys.length-1; i >= 0; i--) {
+      let key = keys[i]
+      if(key.isEnd && i != keys.length-1){
+        break
+      }else{
+        shouldHandleKeys.push(key)
+      }
+    }
+    shouldHandleKeys = shouldHandleKeys.reverse()
+  }else{
+    // previewTextLockedState == PreviewTextLockedState.PART_LOCKED
+    // 部分锁定，则取开始锁定之后的5个字符 ;未锁定，取最开始的最多5个字符
+    for (let i = 0; i < keys.length; i++) {
+      let key = keys[i]
+      if(key.locked){
+        continue
+      }
+      shouldHandleKeys.push(key)
+      if(shouldHandleKeys.length == 5){
+        break
+      }
+    }
+  }
+  let str:string[] = getInputStrArray(shouldHandleKeys)
   let arrayList = new Array<Array<string>>()
   str.forEach((value, index)=>{
     // 例如: [a, b, c]
     const charArray = Array.from(value);
     arrayList.push(charArray)
   })
+  //
+  let nineGridKeyCode:string = getNineGridKeyCodeFromKeys(shouldHandleKeys)
+  let allNineGridKeyCode:string[] = []
+  for (let i = nineGridKeyCode.length-1; i >=0 ; i--) {
+    let subNineGridKeyCode = nineGridKeyCode.slice(0, i+1)
+    if(subNineGridKeyCode.length >  0){
+      allNineGridKeyCode.push(subNineGridKeyCode)
+    }
+  }
+  // 根据九宫格编码查找对应的拼音
+  let possiblePinyinList = new Array<IPinyinNineGridKeyCode>()
+  let nineGridCodeMap = getNineGridCodeToPinyin()
+  allNineGridKeyCode.forEach((code)=>{
+    let pinyinArray = nineGridCodeMap[code]
+    if(pinyinArray){
+      pinyinArray.forEach((value)=>{
+        possiblePinyinList.push({pinyin: value, nineGridKeyCode: code})
+      })
+    }
+  })
 
   // 使用cartesianProduct函数并转换为字符串组合 生成所有可能的拼音组合，待优化过滤不可能为拼音的字符串
-  const productResults = cartesianProductTraditional(arrayList).map(combination => combination.join(''));
+  // const productResults = cartesianProductTraditional(arrayList).map(combination => combination.join(''));
   // 生成
   let returnList:Array<SuggestionWord> = []
-  productResults.forEach((value, index)=>{
-    let suggestWord = new SuggestionWord('', value, keys)
+  let keyMap = getKeyMapForKeys(shouldHandleKeys)
+  possiblePinyinList.forEach((value, index)=>{
+    let nineGridKeyCode = value.nineGridKeyCode
+    let aboutKeys = getKeysFromLongNineGridKeyCode(nineGridKeyCode, keyMap)
+    let suggestWord = new SuggestionWord('', value.pinyin, aboutKeys)
     returnList.push(suggestWord)
   })
   return returnList
+}
+
+/**
+ * 获取
+ * @param nineGridKeyCode
+ * @param map
+ * @returns
+ */
+function getKeysFromLongNineGridKeyCode(nineGridKeyCode:string, map:HashMap<string, KeyButtonData>):KeyButtonData[]{
+  let keys = new Array<KeyButtonData>()
+  let array = Array.from(nineGridKeyCode)
+  array.forEach((value)=>{
+    let keyData = map.get(value)
+    if(keyData){
+      keys.push(keyData)
+    }
+  })
+  return keys
+}
+
+/**
+ * 拼音九宫格编码
+ */
+interface IPinyinNineGridKeyCode{
+  pinyin:string;
+  nineGridKeyCode:string;
+}
+
+/**
+ * 获取输入按键的九宫格编码
+ * @param keys
+ * @returns
+ */
+function getNineGridKeyCodeFromKeys(keys:KeyButtonData[]):string{
+  let nineGridKeyCode:string = ''
+  keys.forEach((value)=>{
+    nineGridKeyCode+=value.upName
+  })
+  return nineGridKeyCode
 }
 
 
@@ -202,7 +423,9 @@ function cartesianProductTraditional<T>(arrays: T[][]): T[][] {
   return result;
 }
 
-
+export function getNineGridCodeToPinyin():Record<string, string[]>{
+  return {"5264":["lang","kang"],"94364":["zheng"],"2426":["bian","biao","chan","chao"],"234":["bei"],"2424":["chai"],"236":["ben","cen"],"2664":["cong"],"7436":["shen"],"24824":["chuai"],"6364":["meng","neng"],"24826":["chuan"],"8664":["tong"],"482":["gua","hua"],"242":["cha"],"484":["gui","hui"],"243":["che","bie"],"364":["eng"],"2":["a","b","c"],"244":["chi"],"2436":["chen"],"486":["guo","hun","huo"],"248264":["chuang"],"3":["d","e","f"],"246":["bin"],"4":["g","h","i"],"368":["dou","fou"],"5":["j","k","l"],"24264":["chang"],"248":["chu"],"6":["m","n","o"],"7":["p","q","r","s"],"8":["t","u","v"],"9":["w","x","y","z"],"924":["zai","wai"],"5824":["kuai"],"926":["wan","yao","zan","yan","zao"],"5826":["luan","kuan","juan"],"22":["ca","ba"],"23":["ce"],"24":["ch","ci","bi","ai"],"7464":["qing","ping"],"26":["bo","ao"],"94824":["zhuai"],"28":["cu","bu"],"7468":["shou"],"94264":["xiang","zhang"],"8426":["tian","tiao"],"934":["wei","zei"],"936":["wen","zen"],"32":["fa","da"],"33":["de"],"34":["ei","di"],"36":["en","fo"],"6264":["mang","nang"],"38":["du","fu"],"74664":["qiong"],"384":["dui"],"386":["dun","duo"],"3426":["diao","dian"],"54264":["jiang","liang"],"268":["cou"],"24364":["cheng"],"942":["xia","zha"],"943":["xie","zhe"],"3664":["dong"],"944":["zhi"],"824":["tai"],"946":["xin","yin"],"826":["tan","tao"],"948":["xiu","zhu"],"42":["ha","ga"],"43":["he","ge"],"7484":["shui"],"9664":["yong","zong"],"7486":["shuo","shun"],"7364":["reng","peng","seng"],"48":["hu","gu"],"9426":["zhan","zhao","xian","xiao"],"9424":["zhai"],"7482":["shua"],"2468":["chou"],"2464":["bing"],"52":["la","ka"],"53":["le","ke"],"54":["li","ji"],"6826":["nuan"],"8464":["ting"],"56":["lo"],"58":["lu","ku","lv","ju"],"9436":["zhen"],"2364":["beng","ceng"],"2484":["chui"],"2482":["chua"],"284":["cui"],"286":["cuo","cun"],"843":["tie"],"724":["pai","sai"],"94826":["zhuan"],"726":["sao","rao","san","pan","ran","pao"],"968":["zou","you"],"62":["na","ma"],"63":["ne","me"],"64":["ni","mi"],"66":["mo"],"7264":["sang","rang","pang"],"68":["ou","nu","mu","nv"],"3464":["ding"],"2486":["chun","chuo"],"4664":["hong","gong"],"734":["pei"],"736":["pen","ren","sen"],"72":["pa","sa"],"73":["se","re"],"74":["sh","si","ri","qi","pi"],"76":["po"],"78":["su","ru","qu","pu"],"8364":["teng"],"948264":["zhuang"],"2264":["bang","cang"],"983":["yue","xue"],"742":["qia","sha"],"984":["zui"],"743":["she","qie","pie"],"744":["shi"],"986":["xun","zun","yun","zuo"],"624":["mai","nai"],"746":["pin","qin"],"626":["mao","nan","man","nao"],"82":["ta"],"868":["tou"],"748":["shu","qiu"],"83":["te"],"7826":["quan","ruan","suan"],"84":["ti"],"88":["tu"],"9464":["ying","xing"],"5664":["long","kong"],"9468":["zhou"],"3364":["deng","feng"],"634":["mei","nei"],"636":["nen","men"],"92":["za","ya","wa"],"93":["ze","ye"],"94":["yi","xi","zh","zi"],"2826":["cuan"],"96":["yo","wo"],"98":["zu","yu","xu","wu"],"8264":["tang"],"24664":["chong"],"74364":["sheng"],"884":["tui"],"643":["mie","nie"],"886":["tun","tuo"],"524":["kai","lai"],"646":["nin","min"],"526":["kao","lan","kan","lao"],"768":["pou","sou","rou"],"648":["miu","niu"],"5426":["lian","liao","jiao","jian"],"9364":["weng","zeng"],"94664":["zhong","xiong"],"9486":["zhuo","zhun"],"748264":["shuang"],"3264":["dang","fang"],"9484":["zhui"],"9482":["zhua"],"534":["lei"],"536":["ken"],"8826":["tuan"],"74826":["shuan"],"74824":["shuai"],"4364":["heng","geng"],"6664":["nong"],"74264":["shang","qiang"],"3826":["duan"],"783":["que"],"542":["jia","lia"],"784":["sui"],"543":["jie","lie"],"786":["run","qun","suo","ruo","sun"],"424":["hai","gai"],"54664":["jiong"],"546":["lin","jin"],"426":["gao","han","gan","hao"],"668":["mou","nou"],"548":["jiu","liu"],"5464":["ling","jing"],"9264":["wang","zang","yang"],"434":["gei","hei"],"436":["hen","gen"],"48264":["huang","guang"],"6426":["miao","mian","niao","nian"],"4264":["hang","gang"],"683":["nve"],"686":["nun","nuo"],"324":["dai"],"326":["dan","fan","dao"],"568":["kou","lou"],"9826":["yuan","zuan","xuan"],"5364":["leng","keng"],"7664":["song","rong"],"7424":["shai"],"4826":["guan","huan"],"334":["dei","fei"],"336":["den","fen"],"4824":["huai","guai"],"64264":["niang"],"6464":["ming","ning"],"58264":["kuang"],"582":["kua"],"583":["lve","jue"],"584":["kui"],"343":["die"],"586":["jun","kuo","lun","kun","luo"],"224":["cai","bai"],"226":["cao","bao","can","ban"],"468":["gou","hou"],"348":["diu"],"7426":["qian","pian","qiao","piao","shao","shan"]};
+}
 
 export function getDictInfo():DictInfo{
   return {

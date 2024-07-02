@@ -13,10 +13,14 @@
  * limitations under the License.
  */
 import { relationalStore } from '@kit.ArkData';
+import { KeyButtonData } from '../data/KeyButtonDataManager';
+import { Queue, Stack } from '@kit.ArkTS';
 
 export default class GlobalContext {
   private static instance: GlobalContext;
   private objectMaps = new Map<string, Object>();
+
+  private lockedKeys = new Stack<Array<KeyButtonData>>()
 
   private constructor() {
   }
@@ -29,7 +33,7 @@ export default class GlobalContext {
   }
 
   getObject(value: string): Object {
-    return this.objectMaps.get(value);
+    return this.objectMaps.get(value) as object;
   }
 
   setObject(key: string, objectClass: Object): void {
@@ -42,5 +46,33 @@ export default class GlobalContext {
 
   setWordDb(store:relationalStore.RdbStore){
     this.setObject('wordsDb', store)
+  }
+
+  addLockedKeys(keys:Array<KeyButtonData>):void{
+    // 自动加锁
+    keys.forEach((key)=>{
+      key.locked = true
+    })
+    this.lockedKeys.push(keys)
+  }
+
+  /**
+   * 解锁上次锁定的keys
+   */
+  unLastLockedKeys():void{
+    if(this.lockedKeys.length > 0){
+      this.lockedKeys.pop().forEach((key)=>{
+        key.locked = false
+      })
+    }
+
+  }
+
+  /**
+   * 查看最后一个锁定的按键组
+   * @returns
+   */
+  lockedKeyPeek():KeyButtonData[]{
+    return this.lockedKeys.peek()
   }
 }

@@ -19,7 +19,7 @@ namespace WordRepImport{
    */
   export async function copyDbFileToStorage()  {
     let wordDb = GlobalContext.getContext().getWordDb()
-    if(wordDb.version > 0){
+    if(wordDb.version > 1){
       Logger.info('词库无需初始化...')
       return
     }
@@ -77,6 +77,7 @@ namespace WordRepImport{
             let betweenMs = (endTime - startTime)
             let betweenStr = convertMsToHMS(betweenMs)
             Logger.info('导入词库耗时:' + betweenStr + " ," + betweenMs + "ms")
+            wordDb.version = 2
           })
 
 

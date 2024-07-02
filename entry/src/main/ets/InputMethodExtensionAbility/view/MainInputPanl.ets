@@ -12,6 +12,8 @@ import { inputMethod } from '@kit.IMEKit';
 import { switchChineseOrEnglish } from '../util/SwitchUtil';
 import { PinyinDataSource, PinyinGroup } from '../dao/DataSouce';
 import { CN_SUB_TYPE_ID } from '../constant/InputMethConstant';
+import GlobalContext from '../context/GlobalContext';
+import { getPreviewTextLockedState, PreviewTextLockedState } from '../util/SpellToWordUtil';
 
 
 /**
@@ -68,6 +70,11 @@ export struct MainInputPanel {
    @Consume pinyinList: PinyinDataSource;
   // 是否正在展示拼音列表界面
   @Consume showPinYinListPage:boolean;
+  // 用于更新预览文本
+  @Consume previewTextUpdate:boolean;
+  // 之前锁定的按键
+  beforePinyinGroupId:string = ''
+  beforeLockedKey:Array<KeyButtonData> = []
 
   onNumberModeUpdate(){
     if(this.numberMode){
@@ -259,10 +266,37 @@ export struct MainInputPanel {
    */
   lockKeyButton(pinyin:PinyinGroup){
     if(pinyin){
-      let keys = pinyin.keys
-      for (let key of keys) {
-        key.selectStr = pinyin.name
+      // 相等则代表，还是和上一次同一个pinyinGroup 还原之前选中的字符
+      let previewTextLockedState = getPreviewTextLockedState(this.inputContent)
+      if(previewTextLockedState == PreviewTextLockedState.ALL_LOCKED){
+        let peekValue = GlobalContext.getContext().lockedKeyPeek();
+        if(peekValue != undefined){
+          peekValue.forEach((beforeKey)=>{
+            beforeKey.locked = false
+            beforeKey.isEnd = false
+          })
+        }
       }
+
+      let keys = pinyin.keys
+      let pinyinStr = pinyin.name
+      let pinyinArray = Array.from(pinyinStr)
+      for (let i = 0; i < pinyinArray.length; i++) {
+        keys[i].locked = true
+        keys[i].isEnd = false
+        keys[i].selectStr = pinyinArray[i]
+        // 末位字符加分词符号
+        if(i == pinyinArray.length -1){
+          keys[i].isEnd = true
+        }
+      }
+      // 添加进全局字符锁队列
+      GlobalContext.getContext().addLockedKeys(keys)
+      // 重新加载上方的预输入文本
+      this.previewTextUpdate = !this.previewTextUpdate
+      // 记录上次锁定的字符，方便还原
+      this.beforeLockedKey = keys
+      this.beforePinyinGroupId = pinyin.id
     }
   }
 
@@ -284,8 +318,22 @@ export struct MainInputPanel {
       let length = this.getShowInputContent().length
       keyboardController.clearText(length)
     }else if(item.key == 'del'){
-      keyboardController.deleteForward(1);
-      this.inputContent.pop()
+      // 判断是否为锁定按钮，删除为解锁
+      if(this.inputContent.length > 0){
+        // 判断最后一个按键是否为锁定状态
+        let lastKey = this.inputContent[this.inputContent.length-1]
+        if(lastKey.locked){
+          // 解锁最后一组锁定的字符
+          GlobalContext.getContext().unLastLockedKeys()
+          // 通知预览文本更新
+          this.previewTextUpdate = !this.previewTextUpdate
+        }else{
+          keyboardController.deleteForward(1);
+          this.inputContent.pop()
+        }
+      }
+
+
     }else{
       let inputMethodSubType =  inputMethod.getCurrentInputMethodSubtype()
       if(null == inputMethodSubType || inputMethodSubType.id == CN_SUB_TYPE_ID){
@@ -307,7 +355,11 @@ export struct MainInputPanel {
         keyboardController.insertText(inputData.fillStr)
       }
     }else{
-      this.inputContent.push(inputData)
+      // 创建新的按键
+      this.inputContent.push(inputData.copy())
+      // 清除之前记录的临时锁定字符
+      this.beforeLockedKey = []
+
       if(inputData.fillStr){
         // 设置输入框里面的预上屏幕文本
         let previewText = this.getShowInputContent()

@@ -24,6 +24,8 @@ struct Index {
   @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
 
   @Provide pageWords:Array<SuggestionWord> = []
+  // 用于更新预览文本
+  @Provide previewTextUpdate:boolean = false;
 
   build() {
     Column() {

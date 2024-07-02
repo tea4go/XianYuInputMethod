@@ -11,14 +11,26 @@ export class KeyButtonData {
   selectStr:string|null = null
   // 是否已被选中生成联想词
   createWord:boolean = false
+  // 是否已锁定
+  locked:boolean = false
+  // 是否为最后一个字符(手动设置分词符号、选择拼音列表时最后一个按键为true)
+  isEnd:boolean = false;
 
-  constructor(upName: string, name: string, key: string, fillStr?:string) {
+  constructor(upName: string, name: string, key: string, fillStr?:string|null|undefined) {
     this.upName = upName;
     this.name = name;
     this.key = key;
     if(fillStr){
       this.fillStr = fillStr
     }
+  }
+
+  /**
+   * 复制一个新对象
+   * @returns
+   */
+  copy():KeyButtonData{
+    return new KeyButtonData(this.upName, this.name, this.key, this.fillStr)
   }
 
 }

@@ -49,7 +49,8 @@ export struct  PinyinDetailView{
   onPinyinListUpdate(){
     if(this.pinyinList.totalCount() > 0){
       WordService.queryByKeyword(this.pinyinList.getData(0).name, (suggestWords)=>{
-        this.pageWords =  convert2SuggestWord(suggestWords);
+        let keyMap = this.pinyinList.getPinYinKeyMap()
+        this.pageWords =  convert2SuggestWord(keyMap, suggestWords);
       })
     }
   }
@@ -103,11 +104,13 @@ export struct  PinyinDetailView{
                 // 判断当前是不是完整拼音
                 if(isFullPinyin(item.name)){
                   WordService.queryByKeyword(item.name, (words)=>{
-                    this.pageWords = convert2SuggestWord(words)
+                    let keyMap = this.pinyinList.getPinYinKeyMap()
+                    this.pageWords = convert2SuggestWord(keyMap, words)
                   })
                 }else{
                   WordService.queryAllByKeywordForLike(item.name, item.name.length, (words)=>{
-                    this.pageWords = convert2SuggestWord(words)
+                    let keyMap = this.pinyinList.getPinYinKeyMap()
+                    this.pageWords = convert2SuggestWord(keyMap, words)
                   })
 
                 }

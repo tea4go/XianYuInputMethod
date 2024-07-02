@@ -21,6 +21,8 @@ struct EnglishInputIndex {
   // 已使用的
   @Provide useWords:Array<SuggestionWord> = []
   @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
+  // 用于更新预览文本
+  @Provide previewTextUpdate:boolean = false;
 
   aboutToAppear(): void {
     this.numberMode = false

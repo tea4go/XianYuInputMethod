@@ -1,7 +1,8 @@
 // Basic implementation of IDataSource to handle data listener
 import { SuggestionWord } from '../view/SmartSuggestionBar';
-import { util } from '@kit.ArkTS';
+import { HashMap, util } from '@kit.ArkTS';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
+import { getKeyMap } from '../util/SpellToWordUtil';
 
 export class BasicDataSource<T> implements IDataSource {
   private listeners: DataChangeListener[] = [];
@@ -120,6 +121,14 @@ export class PinyinDataSource extends BasicDataSource<PinyinGroup> {
         value.id = util.generateRandomUUID()
       })
     }
+  }
+
+  /**
+   * 获取拼音map
+   * @returns
+   */
+  public getPinYinKeyMap():HashMap<string, KeyButtonData>{
+    return getKeyMap(this.dataArray)
   }
 }
 

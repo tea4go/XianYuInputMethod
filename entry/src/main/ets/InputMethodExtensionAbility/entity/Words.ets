@@ -3,7 +3,7 @@ import ArrayList from '@ohos.util.ArrayList';
 import relationalStore from '@ohos.data.relationalStore';
 import { ValuesBucket } from '@kit.ArkData';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
-import { ColumnInfo } from '../entity/ColumnInfo';
+import { ColumnInfo } from './ColumnInfo';
 import { objToNumber, objToString, toEntityList } from '../util/EntityUtil';
 
 
