@@ -39,8 +39,6 @@ struct InputIndex {
   @Provide numberMode:boolean = false;
 
   @Provide showPinYinListPage:boolean = false;
-  // 已使用的
-  @Provide useWords:Array<SuggestionWord> = []
   @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
   @Provide pageWords:WordSuggestDataSource  = new WordSuggestDataSource()
   // 用于更新预览文本

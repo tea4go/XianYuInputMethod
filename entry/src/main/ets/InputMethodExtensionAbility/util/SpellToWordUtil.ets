@@ -86,14 +86,12 @@ export async  function spellToWord(lastMatchSuggestWord:SuggestionWord ,previewT
     // 查找第一页数据
     WordService.queryByNineGridKeyCode(nineGridKeyCode, previewText, 1, 10, (words)=>{
       let suggestWords:Array<SuggestionWord> = []
-      // 建立九宫格按键到code的映射
-      let keyMap:HashMap<string, NineGridKeyCodeData> = getKeyMapFromKeyButtonData(keys);
       // 判断是否查询不到完整的联想词, 保底返回一个单字查询的结果
       if(words.length == 0){
         suggestWords = suggestWords.concat(getLongSuggestWords(keys, previewText, lastMatchSuggestWord)) ;
         callback({pinyin: pinyinGroup, words: suggestWords, append: true});
       }else{
-        suggestWords = suggestWords.concat(convert2SuggestWord(keyMap, words)) ;
+        suggestWords = suggestWords.concat(convert2SuggestWord(keys, words)) ;
         callback({pinyin: pinyinGroup, words: suggestWords, append: false});
       }
 
@@ -120,7 +118,7 @@ function getLongSuggestWords(keys:KeyButtonData[], previewText:string, lastMatch
   // 在spellDictJian中查找拼音对应的汉字
   let hanzhiList = WordService.queryByKeywordPageSync(lastPinyin, 1, 5)
   if (hanzhiList && hanzhiList.length > 0) {
-    let chineseCharacters:Array<SuggestionWord> = convert2SuggestWord(keyMap, hanzhiList)
+    let chineseCharacters:Array<SuggestionWord> = convert2SuggestWord(keys, hanzhiList)
     if(chineseCharacters.length > 0){
       // 只取前五个
       if(chineseCharacters.length > 1){
@@ -198,10 +196,12 @@ function showWords(words:Array<SuggestionWord>):void{
   Logger.info('生成的所有拼音列表为:' + str)
 }
 
-export  function convert2SuggestWord(keyMap:HashMap<string, NineGridKeyCodeData>, words:ArrayList<Words>): SuggestionWord[]{
+export  function convert2SuggestWord(allKeys:Array<KeyButtonData>, words:ArrayList<Words>): SuggestionWord[]{
     if(words){
       let list:Array<SuggestionWord> = []
       words.forEach((value)=>{
+        // 建立九宫格按键到code的映射
+        let keyMap:HashMap<string, NineGridKeyCodeData> = getKeyMapFromKeyButtonData(allKeys);
         let word = value.word
         let pinyin = value.pinyin
         let keys:Array<KeyButtonData> = []
@@ -277,35 +277,9 @@ export interface DictInfo{
  * @returns
  */
 function getPinyinList(keys:KeyButtonData[]):Array<SuggestionWord>{
-  // 预输入文本锁定状态
-  let previewTextLockedState = getPreviewTextLockedState(keys)
 
-  let shouldHandleKeys = new Array<KeyButtonData>()
-  if(previewTextLockedState == PreviewTextLockedState.ALL_LOCKED){
-    // 获取最后倒数第二个锁定的词汇
-    for (let i = keys.length-1; i >= 0; i--) {
-      let key = keys[i]
-      if(key.isEnd && i != keys.length-1){
-        break
-      }else{
-        shouldHandleKeys.push(key)
-      }
-    }
-    shouldHandleKeys = shouldHandleKeys.reverse()
-  }else{
-    // previewTextLockedState == PreviewTextLockedState.PART_LOCKED
-    // 部分锁定，则取开始锁定之后的5个字符 ;未锁定，取最开始的最多5个字符
-    for (let i = 0; i < keys.length; i++) {
-      let key = keys[i]
-      if(key.locked){
-        continue
-      }
-      shouldHandleKeys.push(key)
-      if(shouldHandleKeys.length == 5){
-        break
-      }
-    }
-  }
+
+  let shouldHandleKeys = getShouldHandleKeys(keys);
   let str:string[] = getInputStrArray(shouldHandleKeys)
   let arrayList = new Array<Array<string>>()
   str.forEach((value, index)=>{
@@ -355,6 +329,43 @@ function getPinyinList(keys:KeyButtonData[]):Array<SuggestionWord>{
 interface IPinyinNineGridKeyCode{
   pinyin:string;
   nineGridKeyCode:string;
+}
+
+/**
+ * 获取现在应该处理的按键拼音
+ * @param keys
+ * @returns
+ */
+export function getShouldHandleKeys(keys: KeyButtonData[]) {
+  // 预输入文本锁定状态
+  let previewTextLockedState = getPreviewTextLockedState(keys)
+  let shouldHandleKeys = new Array<KeyButtonData>();
+  if (previewTextLockedState == PreviewTextLockedState.ALL_LOCKED) {
+    // 获取最后倒数第二个锁定的词汇
+    for (let i = keys.length - 1; i >= 0; i--) {
+      let key = keys[i];
+      if (key.isEnd && i != keys.length - 1) {
+        break;
+      } else {
+        shouldHandleKeys.push(key);
+      }
+    }
+    shouldHandleKeys = shouldHandleKeys.reverse();
+  } else {
+    // previewTextLockedState == PreviewTextLockedState.PART_LOCKED
+    // 部分锁定，则取开始锁定之后的5个字符 ;未锁定，取最开始的最多5个字符
+    for (let i = 0; i < keys.length; i++) {
+      let key = keys[i];
+      if (key.locked) {
+        continue;
+      }
+      shouldHandleKeys.push(key);
+      if (shouldHandleKeys.length == 5) {
+        break;
+      }
+    }
+  }
+  return shouldHandleKeys;
 }
 
 /**

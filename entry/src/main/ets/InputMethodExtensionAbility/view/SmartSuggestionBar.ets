@@ -29,8 +29,7 @@ export struct SmartSuggestionBar {
   @Consume @Watch("onInputUpdate")  inputContent:Array<KeyButtonData>
   // 是否展示联想词
   @State suggestMode:boolean = false;
-  // 已选中的联想词
-  @Consume  useWords:Array<SuggestionWord>
+
   // 联想词资源
   // @State words:Array<SuggestionWord> = []
   @Consume pinyinList: PinyinDataSource;
@@ -85,7 +84,6 @@ export struct SmartSuggestionBar {
     }.height(40).width('100%')
     .backgroundColor(Color.Transparent).justifyContent(FlexAlign.Start)
   }
-
 
   /**
    * 联想词列表
@@ -149,14 +147,15 @@ export struct SmartSuggestionBar {
    * @param keys
    */
   onSuggestClick(keys:KeyButtonData[], suggestWord:SuggestionWord){
-    // 清空联想词相关按键
-    this.useWords.push(suggestWord)
+
     keys.forEach((value, index)=>{
       if(value){
         value.createWord = true
+        value.createWordId = suggestWord.id
       }
-
     })
+    // 清空联想词相关按键
+    GlobalContext.getContext().addUseWords(suggestWord)
 
     // 判断本次输入是否已完成
     let suggestNineGridCode = getLongNineGridKeyCode(keys)
@@ -167,7 +166,7 @@ export struct SmartSuggestionBar {
     // 输入完成，清空已输入按钮
     if(completeInput){
       this.inputContent = []
-      this.useWords = []
+      GlobalContext.getContext().clearUseWord()
       this.previewTextList = []
       // 添加文字进入输入框
       keyboardController.insertText(suggestWord.showName);
@@ -187,11 +186,12 @@ export struct SmartSuggestionBar {
   getLoadShowInputContent():IPreviewText{
     let showText: Array<PreviewText> = []
     // 旧的已输入字符串
-    let oldStr = this.previewTextList.map((value)=> value.str).join()
+    let oldStr = this.previewTextList.map((value)=> value.str).join('')
     Logger.info('旧的输入内容为:' + oldStr)
     let newStr:string = ''
     // 已使用的联想词列表
-    this.useWords.forEach((value, index)=>{
+    let useWords = GlobalContext.getContext().getUseWords()
+    useWords.forEach((value, index)=>{
       showText.push(new PreviewText(value.showName, true))
     })
     this.inputContent.forEach((value, index) =>
@@ -266,6 +266,7 @@ export class PreviewText{
   str:string = ''
   // 是否已锁定
   lock:boolean = false;
+
 
   constructor(str: string, lock: boolean) {
     this.str = str

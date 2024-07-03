@@ -20,8 +20,6 @@ struct Index {
   @State englishMode: boolean = false
 
   @Provide showPinYinListPage: boolean = false;
-  // 已使用的
-  @Provide useWords: Array<SuggestionWord> = []
 
   @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
 

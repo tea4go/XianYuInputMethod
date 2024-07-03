@@ -16,10 +16,7 @@ struct EnglishInputIndex {
   @Provide  inputContent:Array<KeyButtonData> = []
   // // 是否为数字键盘格式
   @Provide numberMode:boolean = true;
-
   @Provide showPinYinListPage:boolean = false;
-  // 已使用的
-  @Provide useWords:Array<SuggestionWord> = []
   @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
   // 用于更新预览文本
   @Provide previewTextUpdate:boolean = false;

@@ -39,8 +39,6 @@ export struct  PinyinDetailView{
   @Consume showPinYinListPage:boolean;
   //
   @Consume inputContent:Array<KeyButtonData>
-  // 已使用的按键
-  @Consume useWords:Array<SuggestionWord>
 
   // 当前界面展示的拼音对应的联想词
   @Consume pageWords: WordSuggestDataSource
@@ -225,18 +223,18 @@ export struct  PinyinDetailView{
    * @param word
    */
   onSuggestWordClick(word: SuggestionWord){
-      // 完成拼写，更新按键状态
-    this.useWords.push(word)
+
     // 清空联想词相关按键
     word.keys.forEach((value, index)=>{
       if(value){
         value.createWord = true
+        value.createWordId = word.id
       }
-
     })
+    // 完成拼写，更新按键状态
+    GlobalContext.getContext().addUseWords(word)
 
     // 判断本次输入是否已完成
-
     let suggestNineGridCode = getLongNineGridKeyCode(word.keys)
     let previewTextNineGridCode = getLongNineGridKeyCode(this.inputContent)
     let completeInput:boolean = suggestNineGridCode.length >= previewTextNineGridCode.length
@@ -245,7 +243,7 @@ export struct  PinyinDetailView{
     // 输入完成，清空已输入按钮
     if(completeInput){
       this.inputContent = []
-      this.useWords = []
+      GlobalContext.getContext().clearUseWord()
       // this.previewTextList = []
       // 添加文字进入输入框
       keyboardController.insertText(word.showName);
@@ -343,7 +341,29 @@ export struct  PinyinDetailView{
         }else{
           this.pageWords.replaceAllData(suggestWords.words)
         }
+
+        //
+        // TODO: 加载第一个拼音的数据
+        let pinyinGroup = this.pinyinList.getData(this.currentWordsIndex)
+        if(pinyinGroup){
+          let item = pinyinGroup
+          let currentPinyin: string = item.name;
+          // 判断当前是不是完整拼音
+          if(isFullPinyin(currentPinyin)){
+            WordService.queryByKeyword(currentPinyin, (words)=>{
+              this.pageWords.appendAllData(convert2SuggestWord(keys, words), false)
+            })
+          }else{
+            WordService.queryAllByKeywordForLike(currentPinyin, currentPinyin.length, (words)=>{
+              this.pageWords.appendAllData(convert2SuggestWord(keys, words), false)
+            })
+          }
+        }
+
+
       })
+
+
     }
   }
 }

@@ -15,12 +15,14 @@
 import { relationalStore } from '@kit.ArkData';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
 import { Queue, Stack } from '@kit.ArkTS';
+import { SuggestionWord } from '../view/SmartSuggestionBar';
 
 export default class GlobalContext {
   private static instance: GlobalContext;
   private objectMaps = new Map<string, Object>();
-
   private lockedKeys = new Stack<Array<KeyButtonData>>()
+  // 已选中的联想词
+  useWords:Array<SuggestionWord> = []
 
   private constructor() {
   }
@@ -85,6 +87,40 @@ export default class GlobalContext {
       return this.objectMaps.get('previewText')  as string
     }else{
       return ''
+    }
+  }
+
+  getUseWords():Array<SuggestionWord>{
+    return this.useWords
+  }
+
+  /**
+   * 添加选中的联想词
+   * @param word
+   */
+  addUseWords(word:SuggestionWord):void{
+    this.useWords.push(word)
+  }
+
+  clearUseWord():void{
+    this.useWords = []
+  }
+
+  /**
+   * 删除该按键相关的word
+   * @param key
+   */
+  removeUseWord(key:KeyButtonData){
+    if(key.createWord){
+      let createWordId = key.createWordId
+      for (let i = 0; i < this.useWords.length; i++) {
+        let value = this.useWords[i]
+        if(value.id == createWordId){
+          // 删除该元素
+          this.useWords.splice(i, 1)
+          break
+        }
+      }
     }
   }
 }

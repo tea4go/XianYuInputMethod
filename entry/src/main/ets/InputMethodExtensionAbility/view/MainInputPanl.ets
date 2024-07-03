@@ -325,7 +325,10 @@ export struct MainInputPanel {
       if(this.inputContent.length > 0){
         // 判断最后一个按键是否为锁定状态
         let lastKey = this.inputContent[this.inputContent.length-1]
-        if(lastKey.locked){
+        if(lastKey.createWord){
+          GlobalContext.getContext().removeUseWord(lastKey)
+          this.previewTextUpdate = !this.previewTextUpdate
+        }else if(lastKey.locked){
           // 解锁最后一组锁定的字符
           GlobalContext.getContext().unLastLockedKeys()
           // 通知预览文本更新
