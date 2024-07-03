@@ -3,9 +3,11 @@ import { BottomTool } from '../InputMethodExtensionAbility/pages/InputIndex';
 import { MainInputPanel } from '../InputMethodExtensionAbility/view/MainInputPanl';
 import { EnglishMainInputPanel } from '../InputMethodExtensionAbility/view/EnglishMainInputPanl';
 import { SmartSuggestionBar, SuggestionWord } from '../InputMethodExtensionAbility/view/SmartSuggestionBar';
-import { PinyinDataSource } from '../InputMethodExtensionAbility/dao/DataSouce';
+import { PinyinDataSource, WordSuggestDataSource } from '../InputMethodExtensionAbility/dao/DataSouce';
 import WordRepImport from '../InputMethodExtensionAbility/dao/WordRepImport';
 import { PinyinDetailView } from '../InputMethodExtensionAbility/view/PinyinDetailView';
+import { inputMethod } from '@kit.IMEKit';
+import { CN_SUB_TYPE_ID } from '../InputMethodExtensionAbility/constant/InputMethConstant';
 
 @Entry
 @Component
@@ -23,9 +25,10 @@ struct Index {
 
   @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
 
-  @Provide pageWords:Array<SuggestionWord> = []
+  @Provide pageWords:WordSuggestDataSource  = new WordSuggestDataSource()
   // 用于更新预览文本
   @Provide previewTextUpdate:boolean = false;
+
 
   build() {
     Column() {
@@ -75,7 +78,12 @@ struct Index {
   }
 
   aboutToAppear(): void {
-
+    let subType = inputMethod.getCurrentInputMethodSubtype()
+    if(subType == null || subType.id == CN_SUB_TYPE_ID){
+      this.englishMode = false
+    }else{
+      this.englishMode = true
+    }
   }
 
 }

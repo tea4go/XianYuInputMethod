@@ -1,3 +1,6 @@
+import { SuggestionWord } from '../view/SmartSuggestionBar';
+import { getLongNineGridKeyCode } from './NineGridKeyCodeManager';
+
 export class KeyButtonData {
   // 按钮上方小字
   upName: string = '';
@@ -240,4 +243,35 @@ export function getPinyinDetailRightButtonGroupData(): Array<KeyButtonData> {
   array.push(new KeyButtonData('', '拼/笔', 'pinyinOrWuBi'))
   array.push(new KeyButtonData('', '全/字', 'allOrWord'))
   return array
+}
+
+/**
+ * 根据关键词纠正正在输入的显示字符
+ * @param word
+ */
+export function correctKeyButtonDataSelectStr(word:SuggestionWord, keys:Array<KeyButtonData>) {
+  if(!word){
+    return
+  }
+  // 联想词的九宫格编码
+  let wordNineGridKeyCode = getLongNineGridKeyCode(word.keys)
+  let keyNineGridKeyCode = getLongNineGridKeyCode(keys)
+  let partOrAllMatch: boolean = wordNineGridKeyCode.startsWith(keyNineGridKeyCode)
+  if (partOrAllMatch) {
+    // 联想词的拼音
+    let pinyin = word.previewText
+    let pinyinArray = Array.from(pinyin)
+    for (let i = 0; i < pinyin.length; i++) {
+      let pinyinItem = pinyinArray[i]
+      let key = keys[i]
+      if (key != undefined && null != key.fillStr) {
+        let containPinyinItem = key.fillStr.indexOf(pinyinItem) != -1
+        if (containPinyinItem) {
+          key.selectStr = pinyinItem
+        }
+      }
+    }
+  }
+
+
 }

@@ -49,7 +49,8 @@ namespace WordService{
     }
     let offset = (pageIndex - 1) * pageSize;
     let likeCondition = "" + nineGridKeyCode + "%"
-    let pinyinLikeCondition = pinyin + '%'
+    // 分词符号替换
+    let pinyinLikeCondition = pinyin.replaceAll("'", "") + '%'
     let querySql = 'select * from words where nine_grid_key_code like ? or pinyin like ? order by LENGTH(pinyin), pinyin, frequency desc limit ? offset ?'
     Logger.info(`execute: select * from words where nine_grid_key_code like '${likeCondition}' or pinyin like '${pinyinLikeCondition}' order by LENGTH(pinyin), pinyin, frequency desc limit ${pageSize} offset ${offset}`)
     store.querySql(querySql, [likeCondition, pinyinLikeCondition, pageSize, offset], (err, resultSet)=>{

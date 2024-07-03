@@ -75,4 +75,16 @@ export default class GlobalContext {
   lockedKeyPeek():KeyButtonData[]{
     return this.lockedKeys.peek()
   }
+
+  setPreviewText(text:string):void{
+    this.objectMaps.set('previewText', text)
+  }
+
+  getPreviewText():string{
+    if(this.objectMaps.has('previewText')){
+      return this.objectMaps.get('previewText')  as string
+    }else{
+      return ''
+    }
+  }
 }

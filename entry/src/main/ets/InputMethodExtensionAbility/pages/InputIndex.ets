@@ -1,4 +1,4 @@
-import { PinyinDataSource } from '../dao/DataSouce';
+import { PinyinDataSource, WordSuggestDataSource } from '../dao/DataSouce';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
 import {  MainInputPanel } from '../view/MainInputPanl';
 import { PinyinDetailView } from '../view/PinyinDetailView';
@@ -42,13 +42,12 @@ struct InputIndex {
   // 已使用的
   @Provide useWords:Array<SuggestionWord> = []
   @Provide pinyinList: PinyinDataSource = new PinyinDataSource();
-  @Provide pageWords:Array<SuggestionWord> = []
+  @Provide pageWords:WordSuggestDataSource  = new WordSuggestDataSource()
   // 用于更新预览文本
   @Provide previewTextUpdate:boolean = false;
 
   build() {
     Stack() {
-
       Flex({
         direction: FlexDirection.Column,
         alignItems: ItemAlign.Center,

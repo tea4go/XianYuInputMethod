@@ -7,6 +7,9 @@ import Logger  from './Logger';
 import { PinyinGroup } from '../dao/DataSouce';
 import { getAllPinyinList } from '../data/PinyinListData';
 import { getAllPossiblePinyin, smartSetNextStrSeg } from '../data/PinYinTrieNode';
+import { getKeyMapFromPinyinGroup,
+  getKeysFromLongNineGridKeyCode,
+  getKeyMapFromKeyButtonData, NineGridKeyCodeData } from '../data/NineGridKeyCodeManager';
 
 /**
  * 拼音搜索结果
@@ -14,6 +17,8 @@ import { getAllPossiblePinyin, smartSetNextStrSeg } from '../data/PinYinTrieNode
 export interface PinyinSuggestResult{
   pinyin:PinyinGroup[];
   words:SuggestionWord[]
+  // 是否为追加结果(长词汇查询无结果时，转为追加模式，默认为覆盖)
+  append:boolean
 }
 
 /**
@@ -35,11 +40,11 @@ export enum PreviewTextLockedState{
  * @param englishMode
  * @param callback
  */
-export async  function spellToWord(previewText:string, keys: Array<KeyButtonData>, englishMode:boolean, callback:(result:PinyinSuggestResult)=>void) {
+export async  function spellToWord(lastMatchSuggestWord:SuggestionWord ,previewText:string, keys: Array<KeyButtonData>, englishMode:boolean, callback:(result:PinyinSuggestResult)=>void) {
   // 未创建词语的按键
   let notUseKeyButtonData = keys.filter((value)=> !value.createWord)
   if(notUseKeyButtonData.length == 0){
-    callback({pinyin:[], words:[]})
+    callback({pinyin:[], words:[], append: true})
     return
   }
 
@@ -54,7 +59,7 @@ export async  function spellToWord(previewText:string, keys: Array<KeyButtonData
     })
     let suggestionWord = new SuggestionWord(finalStr, finalStr, notUseKeyButtonData)
     result.push(suggestionWord)
-    callback({pinyin: [], words: []}) ;
+    callback({pinyin: [], words: [], append: true}) ;
     // 中文模式
   }else{
     // 获取九宫格编码
@@ -82,14 +87,14 @@ export async  function spellToWord(previewText:string, keys: Array<KeyButtonData
     WordService.queryByNineGridKeyCode(nineGridKeyCode, previewText, 1, 10, (words)=>{
       let suggestWords:Array<SuggestionWord> = []
       // 建立九宫格按键到code的映射
-      let keyMap:HashMap<string, KeyButtonData> = getKeyMap(pinyinGroup);
+      let keyMap:HashMap<string, NineGridKeyCodeData> = getKeyMapFromKeyButtonData(keys);
       // 判断是否查询不到完整的联想词, 保底返回一个单字查询的结果
       if(words.length == 0){
-        suggestWords = suggestWords.concat(getDefaultSuggestWords(keys, previewText)) ;
-        callback({pinyin: pinyinGroup, words: suggestWords});
+        suggestWords = suggestWords.concat(getLongSuggestWords(keys, previewText, lastMatchSuggestWord)) ;
+        callback({pinyin: pinyinGroup, words: suggestWords, append: true});
       }else{
         suggestWords = suggestWords.concat(convert2SuggestWord(keyMap, words)) ;
-        callback({pinyin: pinyinGroup, words: suggestWords});
+        callback({pinyin: pinyinGroup, words: suggestWords, append: false});
       }
 
     })
@@ -97,54 +102,54 @@ export async  function spellToWord(previewText:string, keys: Array<KeyButtonData
 }
 
 /**
- * 获取默认的词汇
+ * 获取长词汇
+ * 按照分词符号一段段查询，拼接成长词汇
  * @param previewText
  */
-function getDefaultSuggestWords(keys:KeyButtonData[], previewText:string):SuggestionWord[]{
+function getLongSuggestWords(keys:KeyButtonData[], previewText:string, lastMatchSuggestWord:SuggestionWord):SuggestionWord[]{
   let result:SuggestionWord[] = []
   let previewSplit = previewText.split("'")
-
   let arrayList = new Array<Array<SuggestionWord>>()
-
   let offset:number = 0
-  previewSplit.forEach((pinyinText)=>{
-    let len = pinyinText.length
-    let subKeys:KeyButtonData[] = keys.slice(0+offset, len)
-    let keyMap = getKeyMapForKeys(subKeys)
-    // 在spellDictJian中查找拼音对应的汉字
-    let hanzhiList = WordService.queryByKeywordPageSync(pinyinText, 1, 5)
-    if (hanzhiList && hanzhiList.length > 0) {
-      let chineseCharacters:Array<SuggestionWord> = convert2SuggestWord(keyMap, hanzhiList)
-      if(chineseCharacters.length > 0){
-        // 只取前五个
-        if(chineseCharacters.length > 1){
-          let subChars = chineseCharacters.slice(0, 1)
-          arrayList.push(subChars)
-        }else{
-          arrayList.push(chineseCharacters)
-        }
+  // 获取最后一个分词符号的拼音
+  let endCharIndex = previewText.lastIndexOf("'")
+  let lastPinyin = previewText.substring(endCharIndex + 1, previewText.length)
+  // 获取最后几个按键
+  let subKeys = keys.slice(endCharIndex+1, previewText.length)
+  let keyMap = getKeyMapFromKeyButtonData(keys)
+  // 在spellDictJian中查找拼音对应的汉字
+  let hanzhiList = WordService.queryByKeywordPageSync(lastPinyin, 1, 5)
+  if (hanzhiList && hanzhiList.length > 0) {
+    let chineseCharacters:Array<SuggestionWord> = convert2SuggestWord(keyMap, hanzhiList)
+    if(chineseCharacters.length > 0){
+      // 只取前五个
+      if(chineseCharacters.length > 1){
+        let subChars = chineseCharacters.slice(0, 1)
+        arrayList.push(subChars)
+      }else{
+        arrayList.push(chineseCharacters)
       }
     }
-    offset+=len
-  })
+  }
   //
   // 使用cartesianProduct函数并转换为字符串组合 生成所有可能的拼音组合，待优化过滤不可能为拼音的字符串
-
-  const productResults = cartesianProductTraditional(arrayList);
-  // 合并联想词
-  productResults.forEach((words)=>{
-    let showName = ""
-    let previewText = ""
-    let sKeys = new Array<KeyButtonData>()
+ // const productResults = cartesianProductTraditional(arrayList);
+  let longWordShowName = ''
+  let longWordPreviewText = ''
+  let sKeys = new Array<KeyButtonData>()
+  arrayList.forEach((words)=>{
     words.forEach((sword)=>{
-      showName+=sword.showName
-      previewText+=sword.previewText
+      longWordShowName+=sword.showName
+      longWordPreviewText+=sword.previewText
       sKeys = sKeys.concat(sword.keys)
     })
-    let sword = new SuggestionWord(showName, previewText, keys)
-    result.push(sword)
   })
-
+  longWordShowName = lastMatchSuggestWord.showName + longWordShowName
+  longWordPreviewText = lastMatchSuggestWord.previewText + longWordPreviewText
+  sKeys = lastMatchSuggestWord.keys.concat(sKeys)
+  // 输出长词汇，默认
+  let sword = new SuggestionWord(longWordShowName, longWordPreviewText, sKeys)
+  result.push(sword)
   return result
 }
 
@@ -166,31 +171,9 @@ export function getPreviewTextLockedState(keys:Array<KeyButtonData>):PreviewText
 }
 
 
-export function getKeyMap(pinyinGroup:Array<PinyinGroup>):HashMap<string, KeyButtonData>{
-  let keyMap:HashMap<string, KeyButtonData> = new HashMap<string, KeyButtonData>();
-  pinyinGroup.forEach((pinyinG)=>{
-    pinyinG.keys.forEach((key)=>{
-      keyMap.set(key.upName, key);
-    })
-  })
-  return keyMap
-}
 
-/**
- * 取第一个值为有效值，第二个值覆盖
- * @param pinyinGroup
- * @returns
- */
-export function getKeyMapForKeys(pinyinGroup:Array<KeyButtonData>):HashMap<string, KeyButtonData>{
-  let keyMap:HashMap<string, KeyButtonData> = new HashMap<string, KeyButtonData>();
-  pinyinGroup.forEach((pinyinG)=>{
-    // 以第一项为准
-    if(!keyMap.hasKey(pinyinG.upName)){
-      keyMap.set(pinyinG.upName, pinyinG);
-    }
-  })
-  return keyMap
-}
+
+
 
 /**
  * 判断是不是完整拼音
@@ -215,7 +198,7 @@ function showWords(words:Array<SuggestionWord>):void{
   Logger.info('生成的所有拼音列表为:' + str)
 }
 
-export  function convert2SuggestWord(keyMap:HashMap<string, KeyButtonData>, words:ArrayList<Words>): SuggestionWord[]{
+export  function convert2SuggestWord(keyMap:HashMap<string, NineGridKeyCodeData>, words:ArrayList<Words>): SuggestionWord[]{
     if(words){
       let list:Array<SuggestionWord> = []
       words.forEach((value)=>{
@@ -226,7 +209,7 @@ export  function convert2SuggestWord(keyMap:HashMap<string, KeyButtonData>, word
         nineGridKeyCodeArray.forEach((nineGridKeyCode)=>{
           let value = keyMap.get(nineGridKeyCode)
           if(value){
-            keys.push(value)
+            keys.push(value.relationKeys.pop())
           }
         })
 
@@ -355,9 +338,9 @@ function getPinyinList(keys:KeyButtonData[]):Array<SuggestionWord>{
   // const productResults = cartesianProductTraditional(arrayList).map(combination => combination.join(''));
   // 生成
   let returnList:Array<SuggestionWord> = []
-  let keyMap = getKeyMapForKeys(shouldHandleKeys)
   possiblePinyinList.forEach((value, index)=>{
     let nineGridKeyCode = value.nineGridKeyCode
+    let keyMap = getKeyMapFromKeyButtonData(shouldHandleKeys)
     let aboutKeys = getKeysFromLongNineGridKeyCode(nineGridKeyCode, keyMap)
     let suggestWord = new SuggestionWord('', value.pinyin, aboutKeys)
     returnList.push(suggestWord)
@@ -365,23 +348,6 @@ function getPinyinList(keys:KeyButtonData[]):Array<SuggestionWord>{
   return returnList
 }
 
-/**
- * 获取
- * @param nineGridKeyCode
- * @param map
- * @returns
- */
-function getKeysFromLongNineGridKeyCode(nineGridKeyCode:string, map:HashMap<string, KeyButtonData>):KeyButtonData[]{
-  let keys = new Array<KeyButtonData>()
-  let array = Array.from(nineGridKeyCode)
-  array.forEach((value)=>{
-    let keyData = map.get(value)
-    if(keyData){
-      keys.push(keyData)
-    }
-  })
-  return keys
-}
 
 /**
  * 拼音九宫格编码

@@ -2,7 +2,8 @@
 import { SuggestionWord } from '../view/SmartSuggestionBar';
 import { HashMap, util } from '@kit.ArkTS';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
-import { getKeyMap } from '../util/SpellToWordUtil';
+import { getKeyMapFromPinyinGroup, NineGridKeyCodeData } from '../data/NineGridKeyCodeManager';
+
 
 export class BasicDataSource<T> implements IDataSource {
   private listeners: DataChangeListener[] = [];
@@ -127,8 +128,8 @@ export class PinyinDataSource extends BasicDataSource<PinyinGroup> {
    * 获取拼音map
    * @returns
    */
-  public getPinYinKeyMap():HashMap<string, KeyButtonData>{
-    return getKeyMap(this.dataArray)
+  public getPinYinKeyMap():HashMap<string, NineGridKeyCodeData>{
+    return getKeyMapFromPinyinGroup(this.dataArray)
   }
 }
 
@@ -159,6 +160,19 @@ export class WordSuggestDataSource extends BasicDataSource<SuggestionWord> {
   public replaceAllData(datas:Array<SuggestionWord>):void{
     this.updateId(datas)
     this.dataArray = datas;
+    this.notifyDataReload()
+  }
+
+  /**
+   * 追加所有数据
+   * @param datas
+   */
+  public appendAllData(datas:Array<SuggestionWord>, inFirst:boolean):void{
+    if(inFirst){
+      this.dataArray = datas.concat(this.dataArray)
+    }else{
+      this.dataArray = this.dataArray.concat(datas)
+    }
     this.notifyDataReload()
   }
 

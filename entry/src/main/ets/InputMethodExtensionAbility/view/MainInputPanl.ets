@@ -14,6 +14,7 @@ import { PinyinDataSource, PinyinGroup } from '../dao/DataSouce';
 import { CN_SUB_TYPE_ID } from '../constant/InputMethConstant';
 import GlobalContext from '../context/GlobalContext';
 import { getPreviewTextLockedState, PreviewTextLockedState } from '../util/SpellToWordUtil';
+import Logger from '../util/Logger';
 
 
 /**
@@ -282,21 +283,23 @@ export struct MainInputPanel {
       let pinyinStr = pinyin.name
       let pinyinArray = Array.from(pinyinStr)
       for (let i = 0; i < pinyinArray.length; i++) {
-        keys[i].locked = true
-        keys[i].isEnd = false
-        keys[i].selectStr = pinyinArray[i]
-        // 末位字符加分词符号
-        if(i == pinyinArray.length -1){
-          keys[i].isEnd = true
+        let key = keys[i]
+        if(key){
+          key.locked = true
+          key.isEnd = false
+          key.selectStr = pinyinArray[i]
+          // 末位字符加分词符号
+          if(i == pinyinArray.length -1){
+            key.isEnd = true
+          }
+        }else{
+          Logger.error('key 异常！' + JSON.stringify(key))
         }
       }
       // 添加进全局字符锁队列
       GlobalContext.getContext().addLockedKeys(keys)
       // 重新加载上方的预输入文本
       this.previewTextUpdate = !this.previewTextUpdate
-      // 记录上次锁定的字符，方便还原
-      this.beforeLockedKey = keys
-      this.beforePinyinGroupId = pinyin.id
     }
   }
 
