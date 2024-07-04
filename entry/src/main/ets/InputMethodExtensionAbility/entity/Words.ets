@@ -1,4 +1,3 @@
-
 import ArrayList from '@ohos.util.ArrayList';
 import relationalStore from '@ohos.data.relationalStore';
 import { ValuesBucket } from '@kit.ArkData';
@@ -21,7 +20,7 @@ export class Words {
    */
   word: string = '';
   /**
-   * 文本，非空，存储词汇的拼音，考虑到多音字，可以使用分隔符（如空格或逗号）区分不同的读音，例如 "ni hao"。
+   * 本，非空，存储词汇的拼音，考虑到多音字，可以使用分隔符（如空格或逗号）区分不同的读音，例如 "ni hao"。
    */
   pinyin: string = '';
   /**
@@ -44,16 +43,14 @@ export class Words {
    * 词组完整拼音
    */
   groupPin: string = '';
-
-  /**
-   * 未在数据库的字段，关联的输入按钮
-   */
-  btn:Array<KeyButtonData> = []
-
   /**
    * 拼音九宫格对应的编码
    */
   nineGridKeyCode: string = ''
+  /**
+   * 原始拼音(带有分词符号)
+   */
+  originalPinyin: string = ''
 
   static getTableName(): string {
     return "WORDS";
@@ -63,7 +60,7 @@ export class Words {
     return [new ColumnInfo("WORD_ID", "number"), new ColumnInfo("WORD", "string"), new ColumnInfo("PINYIN", "string"),
       new ColumnInfo("IS_COMMON", "number"), new ColumnInfo("FREQUENCY", "number"), new ColumnInfo("REP_ID", "string"),
       new ColumnInfo("TONE", "number"), new ColumnInfo("GROUP_PIN", "string"),
-      new ColumnInfo("NINE_GRID_KEY_CODE", "string")];
+      new ColumnInfo("NINE_GRID_KEY_CODE", "string"), new ColumnInfo("ORIGINAL_PINYIN", "string")];
   }
 
   static mapToEntity(map: Map<string, string | number | Date | null>): Words {
@@ -86,6 +83,8 @@ export class Words {
     entity.groupPin = groupPin;
     let nineGridKeyCode = objToString(map.get("NINE_GRID_KEY_CODE"))
     entity.nineGridKeyCode = nineGridKeyCode;
+    let originalPinyin = objToString(map.get("ORIGINAL_PINYIN"))
+    entity.originalPinyin = originalPinyin;
     return entity;
   }
 
@@ -146,6 +145,9 @@ export class Words {
     if (data.nineGridKeyCode) {
       this.nineGridKeyCode = data.nineGridKeyCode;
     }
+    if (data.originalPinyin) {
+      this.originalPinyin = data.originalPinyin;
+    }
   }
 
   toJson(): ValuesBucket {
@@ -158,7 +160,8 @@ export class Words {
       REP_ID: this.repId ? this.repId : null,
       TONE: this.tone ? this.tone : null,
       GROUP_PIN: this.groupPin ? this.groupPin : null,
-      NINE_GRID_KEY_CODE: this.nineGridKeyCode ? this.nineGridKeyCode : null
+      NINE_GRID_KEY_CODE: this.nineGridKeyCode ? this.nineGridKeyCode : null,
+      ORIGINAL_PINYIN: this.originalPinyin ? this.originalPinyin : null
     };
   }
 
@@ -233,6 +236,14 @@ export class Words {
   getNineGridKeyCode(): string {
     return this.nineGridKeyCode;
   }
+
+  setOriginalPinyin(originalPinyin: string): void {
+    this.originalPinyin = originalPinyin;
+  }
+
+  getOriginalPinyin(): string {
+    return this.originalPinyin;
+  }
 }
 
 interface IJsonWords {
@@ -244,7 +255,8 @@ interface IJsonWords {
   REP_ID: string;
   TONE: number;
   GROUP_PIN: string;
-  NINE_GRID_KEY_CODE: string
+  NINE_GRID_KEY_CODE: string;
+  ORIGINAL_PINYIN: string
 }
 
 export interface IWords {
@@ -257,4 +269,5 @@ export interface IWords {
   tone?: number | null;
   groupPin?: string | null;
   nineGridKeyCode?: string | null;
+  originalPinyin?: string | null;
 }

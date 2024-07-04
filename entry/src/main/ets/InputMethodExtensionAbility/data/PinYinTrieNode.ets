@@ -249,6 +249,7 @@ export function smartSetNextStrSeg(oldStr:string, newChar:string):string{
   let followingWordsAndSegments = pinyinTrie.getFollowingWordsAndSegments(tempStr)
   let words:string[] = followingWordsAndSegments.words
   let newStr = tempStr + newChar
+  let matchWords:Array<string>
   if(words.includes(newStr)){
     return newChar
   }else{
