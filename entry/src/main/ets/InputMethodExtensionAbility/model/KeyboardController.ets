@@ -2,6 +2,7 @@ import { common } from '@kit.AbilityKit';
 import { display } from '@kit.ArkUI';
 import { inputMethodEngine, InputMethodExtensionContext, InputMethodSubtype } from '@kit.IMEKit';
 import { CN_SUB_TYPE_ID, US_SUB_TYPE_ID } from '../constant/InputMethConstant';
+import { switchInputSubtype } from '../util/SwitchUtil';
 
 // 调用输入法框架的getInputMethodAbility方法获取实例，并由此实例调用输入法框架功能接口
 const inputMethodAbility: inputMethodEngine.InputMethodAbility = inputMethodEngine.getInputMethodAbility();
@@ -112,8 +113,10 @@ export class KeyboardController {
           inputPanel.setUiContent('InputMethodExtensionAbility/pages/EnglishInputIndex');
         }
       });
-    });
 
+      // 切换为中文输入法子类型
+      switchInputSubtype(CN_SUB_TYPE_ID)
+    });
 
 
   }

@@ -1,14 +1,14 @@
 {
   "subtypes": [
     {
-      "icon": "$media:app_icon",
+      "icon": "$media:app_default_icon",
       "id": "UsInputMethodExtAbility",
       "label": "$string:english",
       "locale": "en-US",
       "mode": "lower"
     },
     {
-      "icon": "$media:app_icon",
+      "icon": "$media:app_default_icon",
       "id": "CnInputMethodExtAbility",
       "label": "$string:chinese",
       "locale": "zh-CN",

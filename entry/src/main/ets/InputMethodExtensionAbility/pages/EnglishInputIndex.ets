@@ -1,5 +1,7 @@
-import { PinyinDataSource } from '../dao/DataSouce';
+import { US_SUB_TYPE_ID } from '../constant/InputMethConstant';
+import { PinyinDataSource, WordSuggestDataSource } from '../dao/DataSouce';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
+import { switchInputSubtype } from '../util/SwitchUtil';
 import { EnglishMainInputPanel } from '../view/EnglishMainInputPanl';
 import { SmartSuggestionBar, SuggestionWord } from '../view/SmartSuggestionBar';
 import { BottomTool } from './InputIndex';
@@ -21,8 +23,13 @@ struct EnglishInputIndex {
   // 用于更新预览文本
   @Provide previewTextUpdate:boolean = false;
 
+  @Provide pageWords:WordSuggestDataSource  = new WordSuggestDataSource()
+
+
+
   aboutToAppear(): void {
     this.numberMode = false
+    switchInputSubtype(US_SUB_TYPE_ID)
   }
 
   build() {

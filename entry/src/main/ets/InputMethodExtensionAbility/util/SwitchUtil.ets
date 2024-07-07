@@ -6,16 +6,26 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { CN_SUB_TYPE_ID, US_SUB_TYPE_ID } from '../constant/InputMethConstant';
 
 export function switchChineseOrEnglish() {
+  const currentSubtype = inputMethod.getCurrentInputMethodSubtype();
+  let isCnInput = null == currentSubtype || currentSubtype.id == CN_SUB_TYPE_ID
+  if(isCnInput){
+    switchInputSubtype(US_SUB_TYPE_ID)
+  }else{
+    switchInputSubtype(CN_SUB_TYPE_ID)
+  }
+
+}
+
+export function switchInputSubtype(subTypeId:string) {
   try {
     let extra: Record<string, string> = {}
-    const currentSubtype = inputMethod.getCurrentInputMethodSubtype();
-    let isCnInput = null == currentSubtype || currentSubtype.id == CN_SUB_TYPE_ID
+    let isCnInput = subTypeId == CN_SUB_TYPE_ID
     inputMethod.switchCurrentInputMethodSubtype({
-      id: isCnInput ? US_SUB_TYPE_ID : CN_SUB_TYPE_ID,
+      id: isCnInput ?CN_SUB_TYPE_ID: US_SUB_TYPE_ID ,
       mode: "upper",
-      locale: isCnInput ? "en-US" : "zh-CN",
+      locale: isCnInput ? "zh-CN":"en-US" ,
       name: 'com.lonwan.input.method',
-      language: isCnInput ? "en-US" : "zh-CN"
+      language: isCnInput ? "zh-CN":"en-US"
     }, (err: BusinessError, result: boolean) => {
       if (err) {
         console.error(`Failed to switchCurrentInputMethodSubtype: ${JSON.stringify(err)}`);

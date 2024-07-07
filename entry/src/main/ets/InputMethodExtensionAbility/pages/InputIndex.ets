@@ -1,5 +1,7 @@
+import { CN_SUB_TYPE_ID } from '../constant/InputMethConstant';
 import { PinyinDataSource, WordSuggestDataSource } from '../dao/DataSouce';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
+import { switchInputSubtype } from '../util/SwitchUtil';
 import { CustomInput } from '../view/CustomInput';
 import {  MainInputPanel } from '../view/MainInputPanl';
 import { PinyinDetailView } from '../view/PinyinDetailView';
@@ -80,6 +82,9 @@ struct InputIndex {
     .position({ x: 0, y: 0 }).zIndex(99999)
   }
 
+  aboutToAppear(): void {
+    switchInputSubtype(CN_SUB_TYPE_ID)
+  }
 
 }
 
