@@ -127,11 +127,20 @@ export default class GlobalContext {
       let createWordId = key.createWordId
       for (let i = 0; i < this.useWords.length; i++) {
         let value = this.useWords[i]
-        if(value.id == createWordId){
-          // 删除该元素
-          this.useWords.splice(i, 1)
-          break
+        for (let j = 0; j < value.keys.length; j++) {
+          let key = value.keys[j]
+          if(key.createWordId == createWordId){
+            value.keys.forEach((key)=>{
+              key.createWord = false
+              key.createWordId = ''
+            })
+            // 删除该元素
+            this.useWords.splice(i, 1)
+            break
+          }
         }
+
+
       }
     }
   }

@@ -272,19 +272,36 @@ export struct SmartSuggestionBar {
     let iPreviewText = this.getLoadShowInputContent(pinyinGroup)
     this.previewTextList = iPreviewText.previewTextArray
     let previewText = iPreviewText.previewStr
+    // 预输入文本上仅剩候选词的情况
+    if(previewText == "" && this.inputContent.length != 0 && GlobalContext.getContext().getUseWords().length > 0){
+      let useWords = GlobalContext.getContext().getUseWords()
+      let wordAllStr = ''
+      let pinyinAll = ''
+      let keysAll:KeyButtonData[] = []
+      useWords.forEach((useWord)=>{
+        wordAllStr+=useWord.showName
+        pinyinAll+=useWord.previewText
+        keysAll = keysAll.concat(useWord.keys)
+      })
 
-    // 更新联想词列表
-    getAssociationWord(1, 40, previewText, this.inputContent, (suggestWords) => {
-      let append: boolean = suggestWords.append
-      Logger.info(`共查询到${suggestWords.words.length}个联想词`)
+      this.suggestWords.replaceAllData(useWords)
+      this.previewTextList = [new PreviewText(wordAllStr, true)]
+      let allInOneWord = new SuggestionWord(wordAllStr, pinyinAll, keysAll)
+      this.suggestWords.replaceAllData([allInOneWord])
+    }else{
+      // 更新联想词列表
+      getAssociationWord(1, 40, previewText, this.inputContent, (suggestWords) => {
+        let append: boolean = suggestWords.append
+        Logger.info(`共查询到${suggestWords.words.length}个联想词`)
 
-      this.suggestMode = suggestWords.words.length > 0 && !this.showPinYinListPage
-      if (append) {
-        this.suggestWords.appendAllData(suggestWords.words, true)
-      } else {
-        this.suggestWords.replaceAllData(suggestWords.words)
-      }
-    })
+        this.suggestMode = suggestWords.words.length > 0 && !this.showPinYinListPage
+        if (append) {
+          this.suggestWords.appendAllData(suggestWords.words, true)
+        } else {
+          this.suggestWords.replaceAllData(suggestWords.words)
+        }
+      })
+    }
 
     if(this.showPinYinListPage){
       // 加载拼音列表界面数据
