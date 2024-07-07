@@ -131,6 +131,14 @@ export class PinyinDataSource extends BasicDataSource<PinyinGroup> {
   public getPinYinKeyMap():HashMap<string, NineGridKeyCodeData>{
     return getKeyMapFromPinyinGroup(this.dataArray)
   }
+
+  /**
+   * 清理数据
+   */
+  public  clearData(){
+    this.dataArray = []
+    this.notifyDataReload()
+  }
 }
 
 

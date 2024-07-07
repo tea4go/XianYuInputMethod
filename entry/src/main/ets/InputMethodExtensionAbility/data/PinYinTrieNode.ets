@@ -2,6 +2,7 @@ import Logger from '../util/Logger';
 import { getMainButtonGroupData, KeyButtonData } from './KeyButtonDataManager';
 
 import { getAllPinyinList } from './PinyinListData';
+import { Queue, Stack } from '@kit.ArkTS';
 
 /**
  b ba bo bai bei bao ban ben bang beng bi bie biao bian bin bing bu
@@ -195,7 +196,40 @@ export function trieMain() {
  * @param oldStr
  * @param btnData
  */
-export function smartSelectChar(oldStr:string, btnData:KeyButtonData):string{
+export function smartSelectChar(oldStr:string, btnData:KeyButtonData, pinyinStack:Queue<string>):string{
+  let pinyinTrie = getPinyinTrie()
+  let followingWordsAndSegments = pinyinTrie.getFollowingWordsAndSegments(oldStr)
+  let words:string[] = followingWordsAndSegments.words
+  let selectStr = ''
+  if(btnData.fillStr){
+    // 按钮可输入的字符串
+    let fillStrArray:string[] = Array.from(btnData.fillStr)
+    let popValue = pinyinStack.pop()
+    if(fillStrArray.indexOf(popValue) != -1){
+      btnData.selectStr = popValue
+    }else{
+      fillStrArray.forEach((fillStr)=>{
+        let newStr = oldStr + fillStr
+        for (let i = 0; i < words.length; i++) {
+          let word = words[i]
+          if(word != oldStr && word.startsWith(newStr)){
+            btnData.selectStr = fillStr
+            selectStr = fillStr
+            break
+          }
+        }
+      })
+    }
+    // 判断是否未选择字符, 未选择自动选择第一个
+    if(btnData.selectStr == null){
+      btnData.selectStr = btnData.fillStr.charAt(0)
+      selectStr = btnData.selectStr
+    }
+  }
+  return selectStr
+}
+
+export function smartSelectCharOld(oldStr:string, btnData:KeyButtonData, pinyinStack:Queue<string>):string{
   let pinyinTrie = getPinyinTrie()
   let followingWordsAndSegments = pinyinTrie.getFollowingWordsAndSegments(oldStr)
   let words:string[] = followingWordsAndSegments.words
@@ -222,6 +256,7 @@ export function smartSelectChar(oldStr:string, btnData:KeyButtonData):string{
   }
   return selectStr
 }
+
 
 /**
  * 自动设置分词
@@ -303,7 +338,7 @@ export function imitateKeyboardInput(){
   // 拼音键盘数据
   let mainPinyin = getMainButtonGroupData()
   inputArray.forEach((value)=>{
-    let selectStr = smartSelectChar(str, mainPinyin[value])
+    let selectStr = smartSelectChar(str, mainPinyin[value], new Queue<string>())
     let newStr = smartSetSeg(str, selectStr)
     str = newStr
     // 选中的字符为

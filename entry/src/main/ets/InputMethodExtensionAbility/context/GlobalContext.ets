@@ -102,6 +102,18 @@ export default class GlobalContext {
     this.useWords.push(word)
   }
 
+  /**
+   * 获取现使用的词的组合九宫格编码
+   * @returns
+   */
+  getUseWordsNineGridKeyCode():string{
+    let nineGridKeyCode = ''
+    this.useWords.forEach((word)=>{
+      nineGridKeyCode+=word.keys.map(v=>v?.upName).join('')
+    })
+    return nineGridKeyCode
+  }
+
   clearUseWord():void{
     this.useWords = []
   }

@@ -3,15 +3,20 @@
  */
 import { correctKeyButtonDataSelectStr, KeyButtonData } from '../data/KeyButtonDataManager'
 import { inputMethod } from '@kit.IMEKit'
-import { convert2SuggestWord, isFullPinyin, PinyinSuggestResult, spellToWord } from '../util/SpellToWordUtil'
+import { convert2SuggestWord, isFullPinyin, PinyinSuggestResult, spellToWord, getPinyinList,
+  getPreviewTextLockedState,
+  PreviewTextLockedState,
+  getUpdatePinyinGroup} from '../util/SpellToWordUtil'
 import keyboardController from '../model/KeyboardController'
-import { PinyinDataSource, WordSuggestDataSource } from "../dao/DataSouce"
-import { util } from '@kit.ArkTS'
+import { PinyinDataSource, PinyinGroup, WordSuggestDataSource } from "../dao/DataSouce"
+import { Queue, Stack, util } from '@kit.ArkTS'
 import Logger from '../util/Logger'
 import { CN_SUB_TYPE_ID, US_SUB_TYPE_ID } from '../constant/InputMethConstant'
 import { smartSelectChar, smartSetNextStrSeg } from '../data/PinYinTrieNode'
 import { getLongNineGridKeyCode } from '../data/NineGridKeyCodeManager'
 import GlobalContext from '../context/GlobalContext'
+import { isEnglishMode } from '../util/InputMethodUtil'
+
 
 /**
  * 智能联想栏
@@ -20,6 +25,7 @@ interface IPreviewText {
   previewTextArray: Array<PreviewText>;
   previewStr: string;
 }
+
 
 @Component
 export struct SmartSuggestionBar {
@@ -39,6 +45,7 @@ export struct SmartSuggestionBar {
   @State previewTextList: Array<PreviewText> = []
   // 具体拼音Grid界面展示的拼音对应的联想词
   @Consume pageWords: WordSuggestDataSource
+
 
   build() {
     Row() {
@@ -101,6 +108,7 @@ export struct SmartSuggestionBar {
                 .height('100%')
                 .onClick(() => {
                   this.onSuggestClick(item.keys, item)
+                  Logger.info(`点击的候选词: pinyin ${item.previewText} `)
                   this.previewTextUpdate = !this.previewTextUpdate
                 })
             }
@@ -113,27 +121,11 @@ export struct SmartSuggestionBar {
         }.width(40).height(40).backgroundColor(Color.Transparent)
         .onClick(() => {
           this.showPinYinListPage = true;
-          let firstPinyin: string = this.pinyinList.getData(0)?.name
           // 加载第一页文字
-          // 重新加载右侧的拼音Grid
-          // 判断当前是不是完整拼音
-          let previewText = GlobalContext.getContext().getPreviewText()
-          // 更新联想词列表
-          getAssociationWord(this.pageWords.getData(0), previewText, this.inputContent, (suggestWords) => {
-            let append: boolean = suggestWords.append
-            Logger.info(`共查询到${suggestWords.words.length}个联想词`)
-            // 更新左侧拼音列表
-            this.pinyinList.replaceAllData(suggestWords.pinyin)
-            if (this.pinyinList.totalCount() == 0) {
-              this.showPinYinListPage = false
-            }
-            //this.suggestMode = suggestWords.words.length > 0
-            if (append) {
-              this.pageWords.appendAllData(suggestWords.words, true)
-            } else {
-              this.pageWords.replaceAllData(suggestWords.words)
-            }
-          })
+          // 更新左侧拼音列表
+          this.changePinyinGroup()
+          // 加载拼音详情页数据
+          this.loadPinyinPageInfoData()
         })
       } else {
         InputToolBar()
@@ -145,11 +137,28 @@ export struct SmartSuggestionBar {
   }
 
   /**
+   * 加载拼音详情页数据
+   */
+  loadPinyinPageInfoData(){
+    // 判断当前是不是完整拼音
+    let previewText = GlobalContext.getContext().getPreviewText()
+    // 更新联想词列表- 不进行分页查询
+    getAssociationWord(1, -1, previewText, this.inputContent, (suggestWords) => {
+      let append: boolean = suggestWords.append
+      Logger.info(`共查询到${suggestWords.words.length}个联想词`)
+      if (append) {
+        this.pageWords.appendAllData(suggestWords.words, true)
+      } else {
+        this.pageWords.replaceAllData(suggestWords.words)
+      }
+    })
+  }
+
+  /**
    * 更新已选择的联想词状态为已选择, 不再参与词语联想
    * @param keys
    */
   onSuggestClick(keys: KeyButtonData[], suggestWord: SuggestionWord) {
-
     keys.forEach((value, index) => {
       if (value) {
         value.createWord = true
@@ -157,10 +166,11 @@ export struct SmartSuggestionBar {
       }
     })
     // 清空联想词相关按键
-    GlobalContext.getContext().addUseWords(suggestWord)
+    let context = GlobalContext.getContext()
+    context.addUseWords(suggestWord)
 
     // 判断本次输入是否已完成
-    let suggestNineGridCode = getLongNineGridKeyCode(keys)
+    let suggestNineGridCode =  context.getUseWordsNineGridKeyCode()
     let previewTextNineGridCode = getLongNineGridKeyCode(this.inputContent)
     let completeInput: boolean = suggestNineGridCode.length >= previewTextNineGridCode.length
     // && previewTextNineGridCode.startsWith(suggestNineGridCode);
@@ -176,16 +186,20 @@ export struct SmartSuggestionBar {
     Logger.info(`当前联想词的九宫格编码为: ${suggestNineGridCode},  预览文本的九宫格编码为: ${previewTextNineGridCode}, 完成一次输入:${completeInput}`)
   }
 
-  /**
-   * 获取展示在输入顶上的正在输入的字符
-   * @returns
-   */
-  loadShowInputContent(): void {
-    let showContext = this.getLoadShowInputContent()
-    this.previewTextList = showContext.previewTextArray
-  }
 
-  getLoadShowInputContent(): IPreviewText {
+  getLoadShowInputContent(pinyinGroups:PinyinGroup[]): IPreviewText {
+    if(!pinyinGroups){
+      return {previewTextArray: [], previewStr: ''}
+    }
+    let bestMatchPinyin = pinyinGroups[0]?.name
+    if(!bestMatchPinyin){
+      return {previewTextArray: [], previewStr: ''}
+    }
+    let pinyinStack:Queue<string> = new Queue()
+    Array.from(bestMatchPinyin).forEach((value)=>{
+      pinyinStack.add(value)
+    })
+
     let showText: Array<PreviewText> = []
     // 旧的已输入字符串
     let oldStr = this.previewTextList.map((value) => value.str).join('')
@@ -196,6 +210,16 @@ export struct SmartSuggestionBar {
     useWords.forEach((value, index) => {
       showText.push(new PreviewText(value.showName, true))
     })
+
+    let previewTextLockedState = getPreviewTextLockedState(this.inputContent)
+    if(previewTextLockedState == PreviewTextLockedState.ALL_LOCKED){
+
+    }else if(previewTextLockedState == PreviewTextLockedState.PART_LOCKED){
+
+    }else{
+
+    }
+
     // 获取第一个联想词的范围
     for (let i = 0; i < this.inputContent.length; i++) {
       let value = this.inputContent[i]
@@ -213,7 +237,7 @@ export struct SmartSuggestionBar {
         } else {
           // 智能选择下一个字符
           if (value.selectStr == null) {
-            smartSelectChar(oldStr, value)
+            smartSelectChar(oldStr, value, pinyinStack)
           }
           nextStr = smartSetNextStrSeg(newStr, value.selectStr == null ? '' : value.selectStr)
         }
@@ -235,34 +259,51 @@ export struct SmartSuggestionBar {
    * 输入内容更新时调用事件
    */
   onInputUpdate() {
-    // 更新上部的正在输入文本
-    let iPreviewText = this.getLoadShowInputContent()
+    if(this.inputContent.length == 0){
+      this.previewTextList = []
+      this.suggestMode = false
+      this.pinyinList.clearData()
+      return
+    }
+
+    // 获取更新的拼音列表
+    let pinyinGroup = this.changePinyinGroup()
+    // 预输入文本更新
+    let iPreviewText = this.getLoadShowInputContent(pinyinGroup)
     this.previewTextList = iPreviewText.previewTextArray
     let previewText = iPreviewText.previewStr
+
     // 更新联想词列表
-    getAssociationWord(this.suggestWords.getData(0), previewText, this.inputContent, (suggestWords) => {
+    getAssociationWord(1, 40, previewText, this.inputContent, (suggestWords) => {
       let append: boolean = suggestWords.append
       Logger.info(`共查询到${suggestWords.words.length}个联想词`)
-      // 更新左侧拼音列表
-      this.pinyinList.replaceAllData(suggestWords.pinyin)
 
-      // 根据第一个联想词纠正预输入文本
-      correctKeyButtonDataSelectStr(suggestWords.words[0], this.inputContent)
-      let iPreviewText = this.getLoadShowInputContent()
-      this.previewTextList = iPreviewText.previewTextArray
-
-
-      if (this.pinyinList.totalCount() == 0) {
-        this.showPinYinListPage = false
-      }
       this.suggestMode = suggestWords.words.length > 0 && !this.showPinYinListPage
       if (append) {
         this.suggestWords.appendAllData(suggestWords.words, true)
       } else {
         this.suggestWords.replaceAllData(suggestWords.words)
       }
-
     })
+
+    if(this.showPinYinListPage){
+      // 加载拼音列表界面数据
+      this.loadPinyinPageInfoData()
+    }
+  }
+
+  /**
+   * 改变拼音列表
+   * @param previewText
+   */
+  private changePinyinGroup():PinyinGroup[] {
+    let pinyinGroup = getUpdatePinyinGroup(this.inputContent)
+    // 更新左侧拼音列表
+    this.pinyinList.replaceAllData(pinyinGroup)
+    if (this.pinyinList.totalCount() == 0) {
+      this.showPinYinListPage = false
+    }
+    return pinyinGroup
   }
 }
 
@@ -345,15 +386,15 @@ export class SuggestionWord {
  * 获取联想词
  * @returns
  */
-export async function getAssociationWord(lastMatchSuggestWord: SuggestionWord, previewText: string,
+export async function getAssociationWord(pageIndex:number, pageSize:number, previewText: string,
   keyWord: KeyButtonData[], callback: (result: PinyinSuggestResult) => void) {
   if (keyWord.length == 0) {
-    callback({ pinyin: [], words: [], append: false })
+    callback({words: [], append: false })
   }
-  let subType = inputMethod.getCurrentInputMethodSubtype()
-  let englishMode = (null == subType || undefined == subType) ? false : subType.id == US_SUB_TYPE_ID
-  spellToWord(lastMatchSuggestWord, previewText, keyWord, englishMode, (result) => {
+  let englishMode = isEnglishMode()
+  spellToWord(pageIndex, pageSize, previewText, keyWord, englishMode, (result) => {
     callback(result)
   })
 }
+
 

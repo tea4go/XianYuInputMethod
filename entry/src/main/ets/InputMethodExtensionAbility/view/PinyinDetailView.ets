@@ -7,6 +7,7 @@ import {
   getDictInfo,
   getPreviewTextLockedState,
   getSpellDictJian,
+  getUpdatePinyinGroup,
   isFullPinyin,
   PreviewTextLockedState} from '../util/SpellToWordUtil';
 import { getPinyinDetailRightButtonGroupData, KeyButtonData } from '../data/KeyButtonDataManager';
@@ -232,10 +233,11 @@ export struct  PinyinDetailView{
       }
     })
     // 完成拼写，更新按键状态
-    GlobalContext.getContext().addUseWords(word)
+    let context = GlobalContext.getContext()
+    context.addUseWords(word)
 
     // 判断本次输入是否已完成
-    let suggestNineGridCode = getLongNineGridKeyCode(word.keys)
+    let suggestNineGridCode = context.getUseWordsNineGridKeyCode()
     let previewTextNineGridCode = getLongNineGridKeyCode(this.inputContent)
     let completeInput:boolean = suggestNineGridCode.length >= previewTextNineGridCode.length
     // && previewTextNineGridCode.startsWith(suggestNineGridCode);
@@ -244,9 +246,11 @@ export struct  PinyinDetailView{
     if(completeInput){
       this.inputContent = []
       GlobalContext.getContext().clearUseWord()
-      // this.previewTextList = []
       // 添加文字进入输入框
       keyboardController.insertText(word.showName);
+      // 返回九宫格按键界面
+      this.showPinYinListPage = false;
+      this.changePinyinGroup()
     }
     Logger.info(`当前联想词的九宫格编码为: ${suggestNineGridCode},  预览文本的九宫格编码为: ${previewTextNineGridCode}, 完成一次输入:${completeInput}`)
     this.previewTextUpdate = !this.previewTextUpdate
@@ -323,18 +327,14 @@ export struct  PinyinDetailView{
       GlobalContext.getContext().addLockedKeys(keys)
       // 重新加载上方的预输入文本
       this.previewTextUpdate = !this.previewTextUpdate
-
       // 重新加载右侧的拼音Grid
       let previewText = GlobalContext.getContext().getPreviewText()
+      this.changePinyinGroup()
+
       // 更新联想词列表
-      getAssociationWord(this.pageWords.getData(0), previewText, this.inputContent, (suggestWords)=>{
+      getAssociationWord(1, -1, previewText, this.inputContent, (suggestWords)=>{
         let append:boolean = suggestWords.append
         Logger.info(`共查询到${suggestWords.words.length}个联想词`)
-        // 更新左侧拼音列表
-        this.pinyinList.replaceAllData(suggestWords.pinyin)
-        if(this.pinyinList.totalCount() == 0){
-          this.showPinYinListPage = false
-        }
 
         if(append){
           this.pageWords.appendAllData(suggestWords.words, true)
@@ -342,8 +342,7 @@ export struct  PinyinDetailView{
           this.pageWords.replaceAllData(suggestWords.words)
         }
 
-        //
-        // TODO: 加载第一个拼音的数据
+/*        // 加载第一个拼音的数据
         let pinyinGroup = this.pinyinList.getData(this.currentWordsIndex)
         if(pinyinGroup){
           let item = pinyinGroup
@@ -351,19 +350,31 @@ export struct  PinyinDetailView{
           // 判断当前是不是完整拼音
           if(isFullPinyin(currentPinyin)){
             WordService.queryByKeyword(currentPinyin, (words)=>{
-              this.pageWords.appendAllData(convert2SuggestWord(keys, words), false)
+              this.pageWords.appendAllData(convert2SuggestWord(keys, words.convertToArray()), false)
             })
           }else{
             WordService.queryAllByKeywordForLike(currentPinyin, currentPinyin.length, (words)=>{
-              this.pageWords.appendAllData(convert2SuggestWord(keys, words), false)
+              this.pageWords.appendAllData(convert2SuggestWord(keys, words.convertToArray()), false)
             })
           }
-        }
-
+        }*/
 
       })
 
 
+    }
+  }
+
+  /**
+   * 改变拼音列表
+   * @param previewText
+   */
+  private changePinyinGroup() {
+    let pinyinGroup = getUpdatePinyinGroup(this.inputContent)
+    // 更新左侧拼音列表
+    this.pinyinList.replaceAllData(pinyinGroup)
+    if (this.pinyinList.totalCount() == 0) {
+      this.showPinYinListPage = false
     }
   }
 }

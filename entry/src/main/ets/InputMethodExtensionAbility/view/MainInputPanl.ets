@@ -342,6 +342,7 @@ export struct MainInputPanel {
 
     }else{
       let inputMethodSubType =  inputMethod.getCurrentInputMethodSubtype()
+      // 中文输入展示预输入文本，英文输入暂时不展示联想词，直接输入
       if(null == inputMethodSubType || inputMethodSubType.id == CN_SUB_TYPE_ID){
         this.pushToContent(item)
       }else{
@@ -363,12 +364,10 @@ export struct MainInputPanel {
     }else{
       // 创建新的按键
       this.inputContent.push(inputData.copy())
-      // 清除之前记录的临时锁定字符
-      this.beforeLockedKey = []
 
       if(inputData.fillStr){
         // 设置输入框里面的预上屏幕文本
-        let previewText = this.getShowInputContent()
+        // let previewText = this.getShowInputContent()
         // keyboardController.setPreviewText(previewText)
       }
     }

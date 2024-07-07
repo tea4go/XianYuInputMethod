@@ -22,7 +22,7 @@ export class Logger {
   private prefix: string;
 
   // format Indicates the log format string.
-  private format: string = '%{public}s, %{public}s';
+  private format: string = '%{public}s';
 
   /**
    * constructor.

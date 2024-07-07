@@ -9,6 +9,8 @@ export class NineGridKeyCodeData{
 
 export function getKeyMapFromKeyButtonData(keys:Array<KeyButtonData>):HashMap<string, NineGridKeyCodeData>{
   let map = new HashMap<string, NineGridKeyCodeData>();
+  // 过滤已被选中的候选词key
+  keys = keys.filter(v=>!v.createWord)
   keys.forEach((btnKey)=>{
     let nineGridKeyCode = btnKey.upName
     if(map.hasKey(nineGridKeyCode)){

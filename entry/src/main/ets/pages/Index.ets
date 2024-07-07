@@ -8,6 +8,7 @@ import WordRepImport from '../InputMethodExtensionAbility/dao/WordRepImport';
 import { PinyinDetailView } from '../InputMethodExtensionAbility/view/PinyinDetailView';
 import { inputMethod } from '@kit.IMEKit';
 import { CN_SUB_TYPE_ID } from '../InputMethodExtensionAbility/constant/InputMethConstant';
+import { CustomInput } from '../InputMethodExtensionAbility/view/CustomInput';
 
 @Entry
 @Component

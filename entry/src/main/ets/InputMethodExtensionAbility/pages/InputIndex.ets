@@ -1,5 +1,6 @@
 import { PinyinDataSource, WordSuggestDataSource } from '../dao/DataSouce';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
+import { CustomInput } from '../view/CustomInput';
 import {  MainInputPanel } from '../view/MainInputPanl';
 import { PinyinDetailView } from '../view/PinyinDetailView';
 import { SmartSuggestionBar, SuggestionWord } from '../view/SmartSuggestionBar';
