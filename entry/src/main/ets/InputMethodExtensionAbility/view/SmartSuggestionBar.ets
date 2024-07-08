@@ -45,7 +45,13 @@ export struct SmartSuggestionBar {
   @State previewTextList: Array<PreviewText> = []
   // 具体拼音Grid界面展示的拼音对应的联想词
   @Consume pageWords: WordSuggestDataSource
+  // 当前页数
+  pageIndex:number = 1;
+  // 联想词页面大小
+  pageSize:number = 40;
 
+  suggestWordScroller:Scroller = new Scroller()
+  previewTextScroller:Scroller = new Scroller()
 
   build() {
     Row() {
@@ -69,7 +75,7 @@ export struct SmartSuggestionBar {
     // 顶部的正在输入内容
     Row() {
       Row() {
-        List() {
+        List({scroller: this.previewTextScroller}) {
           ForEach(this.previewTextList, (item: PreviewText, index: number) => {
             ListItem() {
               Text(item.str).decoration({ type: item.lock ? TextDecorationType.Underline : TextDecorationType.None })
@@ -77,6 +83,7 @@ export struct SmartSuggestionBar {
             }
           }, (item: PreviewText, index) => item.id)
         }.listDirection(Axis.Horizontal).backgroundColor(Color.Transparent)
+
         .alignListItem(ListItemAlign.Center)
       }
       .height('100%')
@@ -98,7 +105,7 @@ export struct SmartSuggestionBar {
   suggestionList() {
     Row() {
       if (this.suggestMode) {
-        List() {
+        List({scroller: this.suggestWordScroller}) {
           LazyForEach(this.suggestWords, (item: SuggestionWord, index) => {
             ListItem() {
               Button(item.showName)
@@ -114,6 +121,10 @@ export struct SmartSuggestionBar {
             }
           }, (item: SuggestionWord, index: number) => item.id)
         }.layoutWeight(1).height('100%').padding(5).listDirection(Axis.Horizontal)
+
+        .onReachEnd(()=>{
+          this.loadMoreData()
+        })
 
         // 显示具体拼音界面
         Button() {
@@ -143,7 +154,7 @@ export struct SmartSuggestionBar {
     // 判断当前是不是完整拼音
     let previewText = GlobalContext.getContext().getPreviewText()
     // 更新联想词列表- 不进行分页查询
-    getAssociationWord(1, -1, previewText, this.inputContent, (suggestWords) => {
+    getAssociationWord(1, 100, previewText, this.inputContent, (suggestWords) => {
       let append: boolean = suggestWords.append
       Logger.info(`共查询到${suggestWords.words.length}个联想词`)
       if (append) {
@@ -271,6 +282,8 @@ export struct SmartSuggestionBar {
     // 预输入文本更新
     let iPreviewText = this.getLoadShowInputContent(pinyinGroup)
     this.previewTextList = iPreviewText.previewTextArray
+    // 滑动至最新输入的文本
+    this.previewTextScroller.scrollEdge(Edge.End)
     let previewText = iPreviewText.previewStr
     // 预输入文本上仅剩候选词的情况
     if(previewText == "" && this.inputContent.length != 0 && GlobalContext.getContext().getUseWords().length > 0){
@@ -290,7 +303,8 @@ export struct SmartSuggestionBar {
       this.suggestWords.replaceAllData([allInOneWord])
     }else{
       // 更新联想词列表
-      getAssociationWord(1, 40, previewText, this.inputContent, (suggestWords) => {
+      this.pageIndex = 1
+      getAssociationWord(1, this.pageSize, previewText, this.inputContent, (suggestWords) => {
         let append: boolean = suggestWords.append
         Logger.info(`共查询到${suggestWords.words.length}个联想词`)
 
@@ -321,6 +335,21 @@ export struct SmartSuggestionBar {
       this.showPinYinListPage = false
     }
     return pinyinGroup
+  }
+
+  /**
+   * 加载更多的数据
+   */
+  loadMoreData(){
+    this.pageIndex++
+    let previewText = GlobalContext.getContext().getPreviewText()
+    getAssociationWord(this.pageIndex, this.pageSize, previewText, this.inputContent, (suggestWords) => {
+      Logger.info(`分页数据加载中....共查询到${suggestWords.words.length}个联想词`)
+      // this.suggestMode = suggestWords.words.length > 0 && !this.showPinYinListPage
+      if(suggestWords.words.length > 0){
+        this.suggestWords.appendAllData(suggestWords.words, true)
+      }
+    })
   }
 }
 

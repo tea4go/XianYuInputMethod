@@ -47,6 +47,9 @@ export struct  PinyinDetailView{
   @Consume
   // @Watch("onInputUpdate")
   previewTextUpdate:boolean;
+  scroller: Scroller = new Scroller()
+  pageIndex:number = 1;
+  pageSize:number = 100;
 
   @MockSetup
   mock(){
@@ -124,7 +127,7 @@ export struct  PinyinDetailView{
 
       // 右侧具体拼音栏
       Row(){
-        Grid(){
+        Grid(this.scroller){
           LazyForEach(this.pageWords, (item:SuggestionWord)=>{
             GridItem(){
               Button(){
@@ -146,6 +149,9 @@ export struct  PinyinDetailView{
         //.friction(0.6)
         .width('100%')
         .height('100%')
+        .onReachEnd(()=>{
+          this.loadMoreData()
+        })
         // .rowsGap(0.2)
       }.layoutWeight(1).height('100%')
       .borderRadius(5)
@@ -330,9 +336,9 @@ export struct  PinyinDetailView{
       // 重新加载右侧的拼音Grid
       let previewText = GlobalContext.getContext().getPreviewText()
       this.changePinyinGroup()
-
+      this.pageIndex = 1
       // 更新联想词列表
-      getAssociationWord(1, -1, previewText, this.inputContent, (suggestWords)=>{
+      getAssociationWord(1, this.pageSize, previewText, this.inputContent, (suggestWords)=>{
         let append:boolean = suggestWords.append
         Logger.info(`共查询到${suggestWords.words.length}个联想词`)
 
@@ -342,26 +348,9 @@ export struct  PinyinDetailView{
           this.pageWords.replaceAllData(suggestWords.words)
         }
 
-/*        // 加载第一个拼音的数据
-        let pinyinGroup = this.pinyinList.getData(this.currentWordsIndex)
-        if(pinyinGroup){
-          let item = pinyinGroup
-          let currentPinyin: string = item.name;
-          // 判断当前是不是完整拼音
-          if(isFullPinyin(currentPinyin)){
-            WordService.queryByKeyword(currentPinyin, (words)=>{
-              this.pageWords.appendAllData(convert2SuggestWord(keys, words.convertToArray()), false)
-            })
-          }else{
-            WordService.queryAllByKeywordForLike(currentPinyin, currentPinyin.length, (words)=>{
-              this.pageWords.appendAllData(convert2SuggestWord(keys, words.convertToArray()), false)
-            })
-          }
-        }*/
-
       })
-
-
+      // 跳转至Grid开始位置
+      this.scroller.scrollEdge(Edge.Start)
     }
   }
 
@@ -376,6 +365,25 @@ export struct  PinyinDetailView{
     if (this.pinyinList.totalCount() == 0) {
       this.showPinYinListPage = false
     }
+  }
+
+  /**
+   * 到达底部时加载更多数据
+   */
+  loadMoreData(){
+    // 更新联想词列表
+    this.pageIndex++
+    // 重新加载右侧的拼音Grid
+    let previewText = GlobalContext.getContext().getPreviewText()
+    getAssociationWord(this.pageIndex, this.pageSize, previewText, this.inputContent, (suggestWords)=>{
+      let append:boolean = suggestWords.append
+      Logger.info(`正在加载下一页数据，共查询到${suggestWords.words.length}个联想词`)
+      if(suggestWords.words.length > 0){
+        this.pageWords.appendAllData(suggestWords.words, true)
+      }
+
+    })
+
   }
 }
 
