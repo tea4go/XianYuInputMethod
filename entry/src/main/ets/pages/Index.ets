@@ -9,6 +9,7 @@ import { PinyinDetailView } from '../InputMethodExtensionAbility/view/PinyinDeta
 import { inputMethod } from '@kit.IMEKit';
 import { CN_SUB_TYPE_ID } from '../InputMethodExtensionAbility/constant/InputMethConstant';
 import { CustomInput } from '../InputMethodExtensionAbility/view/CustomInput';
+import { EmojiPanel } from '../InputMethodExtensionAbility/view/EmojiPanel';
 
 @Entry
 @Component
@@ -28,6 +29,8 @@ struct Index {
   // 用于更新预览文本
   @Provide previewTextUpdate:boolean = false;
 
+  // 是否展示表情面板
+  @Provide showEmojiPanel:boolean = false;
 
   build() {
     Column() {
@@ -52,18 +55,28 @@ struct Index {
 
           if (this.englishMode) {
             Column({ space: 5 }) {
-              SmartSuggestionBar()
-              EnglishMainInputPanel()
+              if(this.showEmojiPanel){
+                EmojiPanel()
+              }else{
+                SmartSuggestionBar()
+                EnglishMainInputPanel()
+              }
+
               BottomTool()
             }.width('100%').height('100%')
           } else {
             Column({ space: 5 }) {
-              SmartSuggestionBar()
-              if(this.showPinYinListPage){
-                PinyinDetailView()
+              if(this.showEmojiPanel){
+                EmojiPanel()
               }else{
-                MainInputPanel()
+                SmartSuggestionBar()
+                if(this.showPinYinListPage){
+                  PinyinDetailView()
+                }else{
+                  MainInputPanel()
+                }
               }
+
               BottomTool()
             }.width('100%').height('100%')
           }

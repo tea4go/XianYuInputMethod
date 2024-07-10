@@ -3,6 +3,7 @@ import { PinyinDataSource, WordSuggestDataSource } from '../dao/DataSouce';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
 import { switchInputSubtype } from '../util/SwitchUtil';
 import { CustomInput } from '../view/CustomInput';
+import { EmojiPanel } from '../view/EmojiPanel';
 import {  MainInputPanel } from '../view/MainInputPanl';
 import { PinyinDetailView } from '../view/PinyinDetailView';
 import { SmartSuggestionBar, SuggestionWord } from '../view/SmartSuggestionBar';
@@ -46,6 +47,8 @@ struct InputIndex {
   @Provide pageWords:WordSuggestDataSource  = new WordSuggestDataSource()
   // 用于更新预览文本
   @Provide previewTextUpdate:boolean = false;
+  // 是否展示表情面板
+  @Provide showEmojiPanel:boolean = false;
 
   build() {
     Stack() {
@@ -60,11 +63,17 @@ struct InputIndex {
           justifyContent: FlexAlign.SpaceBetween
         }) {
           Column({ space: 5 }) {
-            SmartSuggestionBar()
-            if(this.showPinYinListPage){
-              PinyinDetailView()
+
+            if(this.showEmojiPanel){
+              EmojiPanel()
             }else{
-              MainInputPanel()
+              SmartSuggestionBar()
+              if(this.showPinYinListPage){
+                PinyinDetailView()
+              }else{
+                MainInputPanel()
+              }
+
             }
 
             BottomTool()

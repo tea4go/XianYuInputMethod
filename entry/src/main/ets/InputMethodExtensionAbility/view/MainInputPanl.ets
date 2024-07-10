@@ -337,6 +337,8 @@ export struct MainInputPanel {
           keyboardController.deleteForward(1);
           this.inputContent.pop()
         }
+      }else{
+        keyboardController.deleteForward(1);
       }
 
 

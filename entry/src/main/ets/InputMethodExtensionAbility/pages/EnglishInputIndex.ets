@@ -2,6 +2,7 @@ import { US_SUB_TYPE_ID } from '../constant/InputMethConstant';
 import { PinyinDataSource, WordSuggestDataSource } from '../dao/DataSouce';
 import { KeyButtonData } from '../data/KeyButtonDataManager';
 import { switchInputSubtype } from '../util/SwitchUtil';
+import { EmojiPanel } from '../view/EmojiPanel';
 import { EnglishMainInputPanel } from '../view/EnglishMainInputPanl';
 import { SmartSuggestionBar, SuggestionWord } from '../view/SmartSuggestionBar';
 import { BottomTool } from './InputIndex';
@@ -24,7 +25,8 @@ struct EnglishInputIndex {
   @Provide previewTextUpdate:boolean = false;
 
   @Provide pageWords:WordSuggestDataSource  = new WordSuggestDataSource()
-
+  // 是否展示表情面板
+  @Provide showEmojiPanel:boolean = false;
 
 
   aboutToAppear(): void {
@@ -45,8 +47,13 @@ struct EnglishInputIndex {
           justifyContent: FlexAlign.SpaceBetween
         }) {
           Column({ space: 8 }) {
-            SmartSuggestionBar()
-            EnglishMainInputPanel()
+            if(this.showEmojiPanel){
+              EmojiPanel()
+            }else{
+              SmartSuggestionBar()
+              EnglishMainInputPanel()
+            }
+
             BottomTool()
           }.width('100%').height('100%')
           .backgroundColor("#eff0f4")

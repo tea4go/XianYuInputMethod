@@ -356,7 +356,7 @@ namespace WordService{
    */
   export function updateFrequency(frequency:number, wordId:number){
     // 修改数据
-    let predicates = new relationalStore.RdbPredicates(Words.getTableName()); // 创建表'EMPLOYEE'的predicates
+    let predicates = new relationalStore.RdbPredicates(Words.getTableName());
     predicates.equalTo('WORD_ID', wordId);
     let store = GlobalContext.getContext().getWordDb()
     const valueBucket1: relationalStore.ValuesBucket = {

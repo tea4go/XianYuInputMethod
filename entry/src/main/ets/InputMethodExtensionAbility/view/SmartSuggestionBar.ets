@@ -50,6 +50,9 @@ export struct SmartSuggestionBar {
   // 联想词页面大小
   pageSize:number = 40;
 
+  // 是否展示表情面板
+  @Consume showEmojiPanel:boolean;
+
   suggestWordScroller:Scroller = new Scroller()
   previewTextScroller:Scroller = new Scroller()
 
@@ -381,6 +384,9 @@ export struct InputToolBar {
     [$r('app.media.app_center'), $r('app.media.keyboard_2'), $r('app.media.face'), $r('app.media.guangbiao_move'),
       $r('app.media.voice_2')]
 
+  // 是否展示表情面板
+  @Consume showEmojiPanel:boolean;
+
   build() {
     Row() {
       ForEach(this.bgRes, (item: Resource, index: number) => {
@@ -393,7 +399,9 @@ export struct InputToolBar {
         .type(ButtonType.Normal)
         .backgroundColor(Color.Transparent)
         .onClick(() => {
-
+          if(index == 2){
+            this.showEmojiPanel = true;
+          }
         })
 
       }, (item: Resource, index: number) => index + '')
