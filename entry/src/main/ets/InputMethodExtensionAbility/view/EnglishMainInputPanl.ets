@@ -15,6 +15,10 @@ import keyboardController from '../model/KeyboardController';
 import { switchChineseOrEnglish } from '../util/SwitchUtil';
 import { NumberMainInputPanel } from './NumberMainInputPanl';
 
+@Extend(Text) function keyTextStyle() {
+  .fontSize(26)
+  .fontWeight(400)
+}
 
 /**
  * 键盘
@@ -33,8 +37,7 @@ export struct EnglishMainInputPanel {
   // @State numberMode: boolean = false;
   @Consume inputContent:Array<KeyButtonData>
   @Consume @Watch("onNumberModeUpdate") numberMode:boolean;
-  keyWidth: number = 35;
-  keyHeight: number = this.keyWidth * 1.5;
+  keyHeight: number = 48;
 
   @State layoutOptions: GridLayoutOptions = {
     regularSize: [1, 1],
@@ -71,6 +74,9 @@ export struct EnglishMainInputPanel {
     }
   }
 
+
+
+
   onNumberModeUpdate(){
     this.numberMode = this.numberMode
   }
@@ -97,7 +103,7 @@ export struct EnglishMainInputPanel {
               Button() {
                 Column({ space: 5 }) {
                   Text(item.upName).fontSize(10)
-                  Text(item.name).fontSize(16)
+                  Text(item.name).keyTextStyle()
                 }
               }
               .backgroundColor(Color.White)
@@ -119,7 +125,7 @@ export struct EnglishMainInputPanel {
                 Button() {
                   Column({ space: 5 }) {
                     Text(item.upName).fontSize(10)
-                    Text(item.name).fontSize(16)
+                    Text(item.name).keyTextStyle()
                   }
                 }
                 .backgroundColor(Color.White)
@@ -142,7 +148,7 @@ export struct EnglishMainInputPanel {
               if (item.key == 'del') {
                 Button() {
                   Image($r('app.media.del')).width(40).height(40)
-                    .padding(10)
+                    .padding(5)
                 }
                 .backgroundColor('#dde3ec')
                 .type(ButtonType.Normal)
@@ -182,7 +188,7 @@ export struct EnglishMainInputPanel {
                 Button() {
                   Column({ space: 5 }) {
                     Text(item.upName).fontSize(10)
-                    Text(item.name).fontSize(16)
+                    Text(item.name).keyTextStyle()
                   }
                 }
                 .backgroundColor(item.key == 'number' || item.key == 'chineseOrEnglish' ? '#dde3ec' : Color.White)

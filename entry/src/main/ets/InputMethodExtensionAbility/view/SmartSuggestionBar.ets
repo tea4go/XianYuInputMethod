@@ -82,7 +82,7 @@ export struct SmartSuggestionBar {
           ForEach(this.previewTextList, (item: PreviewText, index: number) => {
             ListItem() {
               Text(item.str).decoration({ type: item.lock ? TextDecorationType.Underline : TextDecorationType.None })
-                .fontSize(14).fontColor(Color.Black)
+                .fontSize(16).fontColor(Color.Black)
             }
           }, (item: PreviewText, index) => item.id)
         }.listDirection(Axis.Horizontal).backgroundColor(Color.Transparent)
@@ -97,7 +97,7 @@ export struct SmartSuggestionBar {
       .padding({ left: 2, right: 2 })
 
       Blank()
-    }.height(40).width('100%')
+    }.height(20).width('100%')
     .backgroundColor(Color.Transparent).justifyContent(FlexAlign.Start)
   }
 
@@ -112,6 +112,8 @@ export struct SmartSuggestionBar {
           LazyForEach(this.suggestWords, (item: SuggestionWord, index) => {
             ListItem() {
               Button(item.showName)
+                .fontSize(24)
+                .fontWeight(300)
                 .type(ButtonType.Normal)
                 .backgroundColor(Color.Transparent)
                 .fontColor(0 == index ? '#437fe5' : Color.Black)
