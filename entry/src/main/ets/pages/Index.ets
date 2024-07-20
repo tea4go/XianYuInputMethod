@@ -62,7 +62,6 @@ struct Index {
                 EnglishMainInputPanel()
               }
 
-              BottomTool()
             }.width('100%').height('100%')
           } else {
             Column({ space: 5 }) {
@@ -77,7 +76,6 @@ struct Index {
                 }
               }
 
-              BottomTool()
             }.width('100%').height('100%')
           }
         }

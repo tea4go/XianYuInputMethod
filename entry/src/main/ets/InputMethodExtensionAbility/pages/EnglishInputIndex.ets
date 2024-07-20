@@ -54,7 +54,6 @@ struct EnglishInputIndex {
               EnglishMainInputPanel()
             }
 
-            BottomTool()
           }.width('100%').height('100%')
           .backgroundColor("#eff0f4")
 
